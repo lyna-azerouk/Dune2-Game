@@ -1,21 +1,23 @@
+module Carte where
 import qualified Data.Map.Strict as M
+import Data.Ord
+import Data.List
+
+
 
 ---------------------INSTANCES----------------------
 
-data Coord = C {cx :: Int ,
-cy :: Int}
-deriving (Show , Eq)
+data Coord = Coord {cx :: Int ,cy :: Int}deriving (Show , Eq)
 
 
 data Terrain = Herbe
-| Ressource Int
-| Eau
-
+    | Ressource Int
+    | Eau
+    deriving (Eq, Show)
 --cartel longeur de la carte 
 --carteh hauteur de la carte 
-newtype Carte = Carte {cartel :: Int ,
-                       carteh :: Int ,
-                       carte_contenu:: M.Map Coord Terrain}
+data Carte = Carte {cartel :: Int ,carteh :: Int ,carte_contenu:: M.Map Coord Terrain}
+
 ---------------------INSTANCES----------------------
 -- définition de la maniere d'ordonner des coordonnees
 instance Ord Coord where
@@ -61,7 +63,6 @@ caseFromChar :: Char -> Terrain
 caseFromChar caractere = case caractere of
     'H' -> Herbe
     'E' -> Eau
-    otherwise -> Undefined
 
 -- transforme une carte en liste de couples coordonnees / Terrain
 listFromCarte :: Carte -> [(Coord,Terrain)]
