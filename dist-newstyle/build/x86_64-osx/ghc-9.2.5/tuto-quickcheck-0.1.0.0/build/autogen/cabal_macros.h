@@ -60,6 +60,16 @@
   (major1) == 1 && (major2) <  2 || \
   (major1) == 1 && (major2) == 2 && (minor) <= 1)
 #endif /* MIN_VERSION_random */
+/* package sdl2-2.5.4.0 */
+#ifndef VERSION_sdl2
+#define VERSION_sdl2 "2.5.4.0"
+#endif /* VERSION_sdl2 */
+#ifndef MIN_VERSION_sdl2
+#define MIN_VERSION_sdl2(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  5 || \
+  (major1) == 2 && (major2) == 5 && (minor) <= 4)
+#endif /* MIN_VERSION_sdl2 */
 
 /* tool gcc-12.0.0 */
 #ifndef TOOL_VERSION_gcc
