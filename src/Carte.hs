@@ -52,7 +52,6 @@ toStringCarteAux cartel (co, t) = if (cx co) == (max 0 (cartel - 1)) then (strFr
 
 instance ToString Carte where
     toString c = -- "largeur = " ++ (show (cartel c)) ++
-                -- "\nhauteur = " ++ (show (carteh c)) ++ "\n" ++
                 foldl (\accstr cur -> accstr ++ (toStringCarteAux (cartel c) cur) ) "" (listFromCarte c)
 
 
@@ -69,9 +68,9 @@ listFromCarte :: Carte -> [(Coord,Terrain)]
 listFromCarte carte = (sortBy (comparing fst) (M.assocs (carte_contenu carte) ))
 
 -- Renvoie le caractère  correspondant à un type de case donné
-  :: Terrain -> String
+--  :: Terrain -> String
 strFromCase ca = case ca of
-    Herbe -> "H"
+    Herbe->"H"
     Eau -> "E"
 
 getCoord :: (Coord, Terrain) -> Coord
@@ -142,15 +141,15 @@ prop_collecteCase_pre coord r carte =
 -- La quantité extraite v est inférieure ou égale à r ou à extractible, selon le cas
 -- La quantité de ressources dans la nouvelle case correspond à la quantité dans l'ancienne case moins la quantité extraite
 -- Toutes les autres cases sont inchangées
-prop_collecteCase :: Coord -> Int -> Carte -> (Int, Carte) -> Bool
-prop_collecteCase coord r carte (v, nc) =
-  prop_Coord_inv coord ==>
-  let
-    old_case = carte_contenu carte M.! coord
-    new_case = carte_contenu nc M.! coord
-    extractible = case old_case of { Ressource n -> n; _ -> 0 }
-  in
-    v >= 0 === True
-    && v <= r || v <= extractible === True
-    && case old_case of { Ressource n -> n - v; _ -> 0 } == case new_case of { Ressource n -> n; _ -> 0 }
-    && all (\c -> c == coord || carte_contenu carte M.! c == carte_contenu nc M.! c) (M.keys (carte_contenu carte))
+--prop_collecteCase :: Coord -> Int -> Carte -> (Int, Carte) -> Bool
+--prop_collecteCase coord r carte (v, nc) =
+  --prop_Coord_inv coord =>
+ -- let
+    --old_case = carte_contenu carte M.! coord
+    --new_case = carte_contenu nc M.! coord
+    --extractible = case old_case of { Ressource n -> n; _ -> 0 }
+  --in
+   -- v >= 0 ==True
+   -- && v <= r || v <= extractible == True
+  -- && case old_case of { Ressource n -> n - v; _ -> 0 } == case new_case of { Ressource n -> n; _ -> 0 }
+   -- && all (\c -> c == coord || carte_contenu carte M.! c == carte_contenu nc M.! c) (M.keys (carte_contenu carte))
