@@ -68,7 +68,8 @@ listFromCarte :: Carte -> [(Coord,Terrain)]
 listFromCarte carte = (sortBy (comparing fst) (M.assocs (carte_contenu carte) ))
 
 -- Renvoie le caractère  correspondant à un type de case donné
---  :: Terrain -> String
+
+strFromCase :: Terrain -> String
 strFromCase ca = case ca of
     Herbe->"H"
     Eau -> "E"
@@ -104,6 +105,9 @@ coordInCarte :: Coord -> Carte -> Bool
 coordInCarte coord carte = case (getCase coord carte) of
                     Just _ -> True
                     Nothing -> False
+-- Vérifie que toutes les coordonnées des cases sont entre les bornes données par la largeur et hauteur de la carte
+prop_allCoordsInBounds_inv :: Carte -> Bool
+prop_allCoordsInBounds_inv carte = foldl (\boolAcc (co,_) -> boolAcc && coordInBounds co (cartel carte) (carteh carte) ) True (listFromCarte carte)
 
 -- Vérifie que toutes les coordonnées avec comme borne la largeur et hauteur correspondent bien à des cases dans la carte
 prop_allCoordInCarte_inv :: Carte -> Bool
@@ -124,7 +128,10 @@ collecteCase coord@(Coord x y) r carte@(Carte _ _ contenu)
             nouvelleContenu = if v < n then M.insert coord (Ressource (n-v)) contenu else M.insert coord Herbe contenu -- update the map with the new resource amount or replace the resource with Herbe
         in (v, Carte (cartel carte) (carteh carte) nouvelleContenu) -- return the collected amount and the updated map
 
---précondition : vérifie que coord est une case dans carte, r >= 0 et que le contenue de cette est case correspond bien à un terrain
+--précondition : 
+--vérifie que coord est une case dans carte,
+--r >= 0
+--que le contenue de cette est case correspond bien à un terrain
 prop_collecteCase_pre :: Coord -> Int -> Carte -> Bool
 prop_collecteCase_pre coord r carte =
   M.member coord (carte_contenu carte) && 
@@ -153,3 +160,16 @@ prop_collecteCase_pre coord r carte =
    -- && v <= r || v <= extractible == True
   -- && case old_case of { Ressource n -> n - v; _ -> 0 } == case new_case of { Ressource n -> n; _ -> 0 }
    -- && all (\c -> c == coord || carte_contenu carte M.! c == carte_contenu nc M.! c) (M.keys (carte_contenu carte))
+
+prop_collecteCase :: Coord -> Int -> Carte -> (Int, Carte) -> Bool
+prop_collecteCase coord r carte (v, nc) =
+  let
+    old_case = carte_contenu carte M.! coord
+    new_case = carte_contenu nc M.! coord
+    extractible = case old_case of { Ressource n -> n; _ -> 0 }
+  in
+    (v >= 0)
+    && v <= r || v <= extractible
+    && case old_case of { Ressource n -> n - v; _ -> 0 } == case new_case of { Ressource n -> n; _ -> 0 }
+    && all (\c -> c == coord || carte_contenu carte M.! c == carte_contenu nc M.! c) (M.keys (carte_contenu carte))
+
