@@ -6,6 +6,7 @@ import Carte
 import Control.Monad (when)
 import Control.Monad (foldM)
 import System.Random
+import qualified Data.Set as S
 
 newtype JoueurId = JoueurId Int deriving (Eq, Show)
 data Joueur = Joueur{
@@ -67,8 +68,23 @@ btype batiment@(Batiment _ _ typeb _ _ _)= case typeb of
     Usine r1 u r2 ->"usine"
     Centrale r -> "centrale"
     _-> "error pas de type bâtiment"
-    
+
+btinitialisation:: String -> Maybe TypeBatiment
+btinitialisation typeb= case typeb of
+    "raffinerie" -> Just (Raffinerie 10)
+    --"usine" -> Usine 10 Unite 0
+    "centrale" -> Just (Centrale 15)
+    _-> Nothing
+
 newtype UniteId = UniteId Int 
+instance Eq UniteId where
+    (UniteId a) == (UniteId b) = a == b
+
+instance Ord UniteId where
+  (UniteId id1) < (UniteId id2) = id1 < id2
+  (UniteId id1) <= (UniteId id2)  = id1 <= id2
+  (UniteId id1) > (UniteId id2)  = id1 > id2
+  (UniteId id1) >= (UniteId id2)  = id1 >= id2
 data TypeUnite = Collecteur Int
     |Combattant 
     deriving (Eq, Show)
@@ -86,6 +102,10 @@ data Unite = Unite{
     pvu::Int, -- pv si 0 => destruction 
     ordres::M.Map Int TypeOrdres
 }
+
+instance Eq Unite where 
+    (Unite c1 p1 t1 i1 pv1 or1) == (Unite c2 p2 t2 i2 pv2 or2)= (c1==c2) && (p1==p2) && (t1==t2) && (i1==i2) && (pv1==pv2) && (or1==or2)
+
 
 uproprio :: Unite -> JoueurId
 uproprio unite@(Unite _ propriou _ _ _ _) = propriou
@@ -218,19 +238,169 @@ smartConst_env carte listejoueurs = do
                         , batiments = creerListeBatConst batiments M.empty}
 
 actionRaffinerie :: Unite -> Batiment -> (Unite, Int)
-actionRaffinerie unite@(Unite _ _ (Collecteur n) _ _ _) _ =
+actionRaffinerie unite@(Unite _ _ (Collecteur n) _ _ _) bat =
   let nbrRessources = ressouceCollecteur unite
   in (unite { typeu = Collecteur 0 }, nbrRessources)
 
-propr_pre_actionRaffinerie :: Unite -> Bool
-propr_pre_actionRaffinerie (Unite _ _ (Collecteur n) _ _ _) = n > 0
-propr_pre_actionRaffinerie _ = False
+--prop_pre_actionRaffinerie  : vérifier que bat est une raffinerie appartenant à joueur
+prop_pre_actionRaffinerie :: Unite -> Bool
+prop_pre_actionRaffinerie (Unite _ _ (Collecteur n) _ _ _) = n > 0
+prop_pre_actionRaffinerie _ = False
 
-propr_post_actionRaffinerie :: Unite -> Bool
-propr_post_actionRaffinerie (Unite _ _ (Collecteur n) _ _ _) = n == 0
-propr_post_actionRaffinerie _ = False
+prop_post_actionRaffinerie :: Unite -> Bool
+prop_post_actionRaffinerie (Unite _ _ (Collecteur n) _ _ _) = n == 0
+prop_post_actionRaffinerie _ = False
 
 invariant_actionRaffinerie :: Unite -> Bool
 invariant_actionRaffinerie (Unite _ _ Combattant _ _ _) = False
 invariant_actionRaffinerie (Unite _ _ (Collecteur _) _ _ _) = True
 invariant_actionRaffinerie _ = False
+
+creerBatiment :: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
+creerBatiment j typeBat env@(Environement _ _ _ bats) c idglobal prixbat pvbat =
+    let t = btinitialisation typeBat in 
+    case t of 
+        Nothing -> (False, env)
+        Just tnew ->
+            let bat = Batiment { coordb = c
+                               , propriob = jid j
+                               , typeb = tnew
+                               , idb = BatId idglobal
+                               , pvb = pvbat
+                               , prixb = prixbat }
+                newBats = M.insert (BatId idglobal) bat bats
+                newEnv = env { batiments = newBats }
+            in (True, newEnv)
+
+prop_pre_creerBatiment1::Environement-> Coord->Bool
+prop_pre_creerBatiment1 env@(Environement _ carte _ _) coord = let t = getCase coord carte in 
+    case t of 
+    Just Herbe -> True 
+    _ -> False
+
+prop_pre_creerBatiment2 :: Environement -> Coord -> Bool
+prop_pre_creerBatiment2 env@(Environement _ carte unis bats) coord = 
+    let res1 = cherche_Case_Batiment coord bats 
+        res2 = cherche_Case_Unite coord unis 
+    in case res1 of 
+        [] -> case res2 of 
+                [] -> True 
+                _  -> False
+        _  -> False
+
+
+prop_post_creerBatiment1::Environement -> Coord -> String -> Bool
+prop_post_creerBatiment1 env@(Environement _ _ _ bats) coord ty = 
+    case (cherche_Case_Batiment coord bats) of 
+    b:[] -> let typ = btype b in if(typ==ty) then True else False
+    _ -> False
+
+prop_post_creerBatiment2::Environement->Environement -> Coord -> String -> Bool
+prop_post_creerBatiment2 env@(Environement j carte unis bats) envnew@(Environement newj newcarte newunis newbats) coord ty = 
+    if ((j==newj && carte==newcarte) && unis==newunis) then let keys1 = M.keysSet bats in
+       let keys2 = M.keysSet newbats
+    in (keys1 `S.isSubsetOf` keys2)
+        else False
+
+--invariant_creerBatiment::Environement-> Bool
+
+cherche_Joueur_Batiment::Joueur -> M.Map BatId Batiment -> [Batiment]
+cherche_Joueur_Batiment joueur batiments =
+    map snd $ filter (\(_, bat) -> caseBatJoueur bat joueur) (M.toList batiments)
+  where
+    caseBatJoueur(Batiment _ p _ _ _ _) joueur = p == (jid joueur)
+
+cherche_Joueur_Unite::Joueur -> M.Map UniteId Unite -> [Unite]
+cherche_Joueur_Unite joueur unis=
+    map snd $ filter (\(_, uni) -> caseUniteJoueur uni joueur) (M.toList unis)
+  where
+    caseUniteJoueur(Unite _ p _ _ _ _) joueur = p == (jid joueur)
+
+actionProductionEnergie::Environement->Joueur->Int
+actionProductionEnergie env@(Environement _ _ _ bats) joueur =  
+    let listebats=cherche_Joueur_Batiment joueur bats in 
+    
+    foldl (\res bat -> (caseBatJoueur bat joueur)+res) 0 listebats
+  where
+    caseBatJoueur(Batiment _ _ t _ _ _) joueur = case t of 
+                                            QG n -> n 
+                                            Centrale n -> n
+                                            _-> 0
+
+--prop_pre_actionProductionEnergie
+--prop_post_actionProductionEnergie
+--invariant_actionProductionEnergie
+
+actionConsommationEnergie::Environement->Joueur->Int
+actionConsommationEnergie env@(Environement _ _ _ bats) joueur =  
+    let listebats=cherche_Joueur_Batiment joueur bats in 
+    
+    foldl (\res bat -> (caseBatJoueur bat joueur)+res) 0 listebats
+  where
+    caseBatJoueur(Batiment _ _ t _ _ _) joueur = case t of 
+                                            Raffinerie n -> n
+                                            Usine n u temp -> n
+                                            _-> 0
+
+--prop_pre_actionConsommationEnergie
+--prop_post_actionConsommationEnergie
+--invariant_actionConsommationEnergie
+
+cherche_fermeture_bats::[Batiment]->[BatId]
+cherche_fermeture_bats bats =
+    foldl (\res bat -> case (caseBatDest bat) of
+                        Just idn -> idn:res
+                        _ -> res) [] bats
+    where
+        caseBatDest (Batiment _ _ _ id pv _)= case pv of 
+                                                0 -> Just id
+                                                _-> Nothing
+
+actionFermetureBatiment :: Environement -> Joueur -> Environement
+actionFermetureBatiment env@(Environement j c u bats) joueur =  
+    let listebats = cherche_Joueur_Batiment joueur bats in
+    let listeferme = cherche_fermeture_bats listebats
+    in foldl (\acc bId -> Environement j c u (M.delete bId bats)) env listeferme
+
+--prop_pre_actionFermetureBatiment
+--prop_post_actionFermetureBatiment
+--invariant_actionFermetureBatiment
+                             
+cherche_qg_joueur::[Batiment]->Bool
+cherche_qg_joueur bats =
+    foldl (\res bat -> (caseBatDest bat)|| res) False bats
+    where
+        caseBatDest (Batiment _ _ t _ _ _)= case t of 
+                                                QG n -> True
+                                                _-> False
+
+verificationDestruction::Environement->Environement
+verificationDestruction env@(Environement joueurs carte unis bats) =
+    foldl (\acc joueur@(Joueur idj _ _)-> let listebats = cherche_Joueur_Batiment joueur bats in
+                case (cherche_qg_joueur listebats) of
+                True -> let newjoueurs =  filter (\j@(Joueur id name credit)->
+                                        id /= idj) joueurs in
+                        
+                        let listeunite=cherche_Joueur_Unite joueur unis in 
+                        let newunis = foldl (\acc uni@(Unite _ _ _ idu _ _) -> (M.delete idu acc)) unis listeunite in
+                        let newbats = foldl (\acc bat@(Batiment _ _ _ idb _ _) -> (M.delete idb acc)) bats listebats
+                        in 
+                        Environement newjoueurs carte newunis newbats
+                False -> acc
+             ) env joueurs
+     
+--prop_pre_verificationDestruction
+--prop_post_verificationDestruction
+--invariant_verificationDestruction
+
+--actionUsine::Batiment->Joueur->Unite->Bool
+--actionUsine bat@(Batiment _ _ (Usine n u temp) _ _ _) joueur unite = 
+  --  bat@{}
+
+
+-- rajouter variable dans Usine : etat => "en cours", "terminé", "vide" 
+--prop_pre_actionUsine : verifier que c est une usine et qu elle appartient à joueur
+--prop_post_actionUsine : verfier l'etat => "en cours"
+--invariant_actionUsine
+
+--rajouter une variable dans Batiment : utilisable::Bool (permet de stopper les batiments si le joueur n'a pas d'energie)

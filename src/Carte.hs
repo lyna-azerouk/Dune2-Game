@@ -30,6 +30,10 @@ instance Ord Coord where
 instance Read Carte where
     readsPrec _ x = [((createCarte ({-reverse-} x)), "")]
 
+instance Eq Carte where
+  (Carte a b contenu) == (Carte c d contenubis) = (a == c) && (b == d) && (M.keys contenu == M.keys contenubis) &&
+                                                (all (\coord -> M.lookup coord contenu == M.lookup coord contenubis) (M.keys contenu))
+
 -- fonction auxiliaire au foldl pour ajouter une case en fonction de son type et avec ses coordonnees x et y dans une carte donnee
 createCarteAux :: Carte -> Char -> Carte
 createCarteAux c@(Carte {cartel = cl, carteh = ch, carte_contenu = cc}) '\n' = c {cartel = 0, carteh = ch + 1, carte_contenu = cc}
