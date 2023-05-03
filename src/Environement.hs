@@ -167,8 +167,7 @@ prop_environnement_4 (Environement _ carte@(Carte _ _ contenu) unites batiments)
                     uni:[]->True
                     _->False
         _ -> True) (M.toList contenu)
-<<<<<<< Updated upstream
-=======
+
 
 
 
@@ -207,4 +206,3 @@ smartConst_env carte listejoueurs =
                   , unites = M.empty
                   , batiments = batiments }
   where n = 1
->>>>>>> Stashed changes
