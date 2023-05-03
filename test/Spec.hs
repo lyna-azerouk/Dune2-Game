@@ -6,3 +6,4 @@ main :: IO ()
 main = hspec $ do
     -- carte
     CS.carteAllCoordsInBoundsSpec
+    CS.carteCoordSpec

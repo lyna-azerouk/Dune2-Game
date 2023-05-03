@@ -5,8 +5,8 @@ import Test.QuickCheck
 
 import Carte
 
-genCarte :: Gen Carte
-genCarte = pure (read   "HE")  --a chaque element en lui associer la fonction read 
+genCarte :: Gen Carte               --exepmle simple de carte 
+genCarte = pure (read   "HE")  --a chaque element en lui associer la fonction read   H:pour herbe et E: pour Eau 
 
 genCoord :: Gen Coord
 genCoord = do
