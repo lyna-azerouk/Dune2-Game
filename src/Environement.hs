@@ -34,7 +34,7 @@ instance Ord BatId where
 
 data TypeBatiment = QG Int -- Int = energie_prod
     | Raffinerie Int -- Int = energie_conso
-    | Usine Int Unite Int -- Int = energie_conso , Unite = unite produite et Int = temps de production
+    | Usine Int Unite Int String-- Int = energie_conso , Unite = unite produite et Int = temps de production
     | Centrale Int -- Int = energie_prod
 
 
@@ -44,28 +44,30 @@ data Batiment = Batiment{
     typeb:: TypeBatiment,
     idb::BatId,
     pvb::Int, -- pv si 0 => destruction 
-    prixb::Int -- coût du bâtiment en crédits
+    prixb::Int, -- coût du bâtiment en crédits
+    utilisable::Bool
 }
+
 bcoord :: Batiment -> Coord
-bcoord batiment@(Batiment coordb _ _ _ _ _) = coordb
+bcoord batiment@(Batiment coordb _ _ _ _ _ _) = coordb
 
 bproprio :: Batiment -> JoueurId
-bproprio batiment@(Batiment _ propriob _ _ _ _) = propriob
+bproprio batiment@(Batiment _ propriob _ _ _ _ _) = propriob
 
 bpv:: Batiment -> Int
-bpv batiment@(Batiment _ _ _ _ pvb _)= pvb
+bpv batiment@(Batiment _ _ _ _ pvb _ _)= pvb
 
 bprix:: Batiment -> Int
-bprix batiment@(Batiment _ _ _ _ _ prixb)= prixb
+bprix batiment@(Batiment _ _ _ _ _ prixb _)= prixb
 
 bid:: Batiment -> BatId
-bid batiment@(Batiment _ _ _ id _ _)= id
+bid batiment@(Batiment _ _ _ id _ _ _)= id
 
 btype:: Batiment -> String
-btype batiment@(Batiment _ _ typeb _ _ _)= case typeb of 
+btype batiment@(Batiment _ _ typeb _ _ _ _)= case typeb of 
     QG r -> "qg"
     Raffinerie r ->"raffinerie"
-    Usine r1 u r2 ->"usine"
+    Usine r1 u r2 etat ->"usine"
     Centrale r -> "centrale"
     _-> "error pas de type bâtiment"
 
@@ -148,7 +150,7 @@ cherche_Case_Batiment :: Coord -> M.Map BatId Batiment -> [Batiment]
 cherche_Case_Batiment coord bats =
   map snd $ filter (\(_, bat) -> caseBatimentCoord bat coord) (M.toList bats)
   where
-    caseBatimentCoord (Batiment c _ _ _ _ _) coordb = c == coordb
+    caseBatimentCoord (Batiment c _ _ _ _ _ _) coordb = c == coordb
 
 cherche_Case_Unite :: Coord ->M.Map UniteId Unite -> [Unite]
 cherche_Case_Unite coord unis =
@@ -163,7 +165,7 @@ prop_environnement_1 env@(Environement joueurs _ unites batiments) =
                                                 Just _ -> True
                                                 Nothing -> False) (M.toList unites)
     &&
-    all (\(_, bat@( Batiment _ propriob _ _ _ _)) ->case chercheJoueur joueurs propriob of
+    all (\(_, bat@( Batiment _ propriob _ _ _ _ _)) ->case chercheJoueur joueurs propriob of
                                                 Just _ -> True
                                                 Nothing -> False) (M.toList batiments)
 
@@ -216,7 +218,7 @@ whileLoop carte coords = do
     _ -> whileLoop carte (coord : coords)
 
 creerListeBatConst :: [Batiment] -> M.Map BatId Batiment -> M.Map BatId Batiment
-creerListeBatConst bats res = foldl (\acc bat@(Batiment _ _ _ idb _ _) -> M.insert idb bat acc) res bats
+creerListeBatConst bats res = foldl (\acc bat@(Batiment _ _ _ idb _ _ _) -> M.insert idb bat acc) res bats
 
 
 -- constructeur intelligent Environnement 
@@ -308,7 +310,7 @@ cherche_Joueur_Batiment::Joueur -> M.Map BatId Batiment -> [Batiment]
 cherche_Joueur_Batiment joueur batiments =
     map snd $ filter (\(_, bat) -> caseBatJoueur bat joueur) (M.toList batiments)
   where
-    caseBatJoueur(Batiment _ p _ _ _ _) joueur = p == (jid joueur)
+    caseBatJoueur(Batiment _ p _ _ _ _ _) joueur = p == (jid joueur)
 
 cherche_Joueur_Unite::Joueur -> M.Map UniteId Unite -> [Unite]
 cherche_Joueur_Unite joueur unis=
@@ -322,7 +324,7 @@ actionProductionEnergie env@(Environement _ _ _ bats) joueur =
     
     foldl (\res bat -> (caseBatJoueur bat joueur)+res) 0 listebats
   where
-    caseBatJoueur(Batiment _ _ t _ _ _) joueur = case t of 
+    caseBatJoueur(Batiment _ _ t _ _ _ _) joueur = case t of 
                                             QG n -> n 
                                             Centrale n -> n
                                             _-> 0
@@ -337,14 +339,28 @@ actionConsommationEnergie env@(Environement _ _ _ bats) joueur =
     
     foldl (\res bat -> (caseBatJoueur bat joueur)+res) 0 listebats
   where
-    caseBatJoueur(Batiment _ _ t _ _ _) joueur = case t of 
+    caseBatJoueur(Batiment _ _ t _ _ _ _) joueur = case t of 
                                             Raffinerie n -> n
-                                            Usine n u temp -> n
+                                            Usine n u temp etat-> n
                                             _-> 0
 
 --prop_pre_actionConsommationEnergie
 --prop_post_actionConsommationEnergie
 --invariant_actionConsommationEnergie
+
+stopperEnergie :: Environement -> Joueur -> Environement
+stopperEnergie env@(Environement j carte unis bats) joueur = 
+  let prod = actionProductionEnergie env joueur 
+      conso = actionConsommationEnergie env joueur 
+  in 
+    if (prod < conso) then env else 
+      let newbats = foldl (\acc (batid, bat) ->
+                            let newBat = if (propriob bat == jid joueur) 
+                                          then bat { utilisable = False } 
+                                          else bat
+                            in M.insert batid newBat acc) M.empty (M.toList bats)
+      in Environement j carte unis newbats
+
 
 cherche_fermeture_bats::[Batiment]->[BatId]
 cherche_fermeture_bats bats =
@@ -352,7 +368,7 @@ cherche_fermeture_bats bats =
                         Just idn -> idn:res
                         _ -> res) [] bats
     where
-        caseBatDest (Batiment _ _ _ id pv _)= case pv of 
+        caseBatDest (Batiment _ _ _ id pv _ _)= case pv of 
                                                 0 -> Just id
                                                 _-> Nothing
 
@@ -370,7 +386,7 @@ cherche_qg_joueur::[Batiment]->Bool
 cherche_qg_joueur bats =
     foldl (\res bat -> (caseBatDest bat)|| res) False bats
     where
-        caseBatDest (Batiment _ _ t _ _ _)= case t of 
+        caseBatDest (Batiment _ _ t _ _ _ _)= case t of 
                                                 QG n -> True
                                                 _-> False
 
@@ -383,24 +399,58 @@ verificationDestruction env@(Environement joueurs carte unis bats) =
                         
                         let listeunite=cherche_Joueur_Unite joueur unis in 
                         let newunis = foldl (\acc uni@(Unite _ _ _ idu _ _) -> (M.delete idu acc)) unis listeunite in
-                        let newbats = foldl (\acc bat@(Batiment _ _ _ idb _ _) -> (M.delete idb acc)) bats listebats
+                        let newbats = foldl (\acc bat@(Batiment _ _ _ idb _ _ _) -> (M.delete idb acc)) bats listebats
                         in 
                         Environement newjoueurs carte newunis newbats
                 False -> acc
              ) env joueurs
      
---prop_pre_verificationDestruction
+--prop_pre_verificationDestruction -> pas d'idée
 --prop_post_verificationDestruction
---invariant_verificationDestruction
+--invariant_verificationDestruction -> pas d'idée
 
---actionUsine::Batiment->Joueur->Unite->Bool
---actionUsine bat@(Batiment _ _ (Usine n u temp) _ _ _) joueur unite = 
-  --  bat@{}
+actionUsine::Batiment->Joueur->Unite->Batiment
+actionUsine bat@(Batiment _ _ (Usine n u temp _) _ _ _ _) joueur unite = bat{typeb=Usine n unite temp "en cours"}
+
+prop_pre_actionUsine1::Batiment->Joueur->Bool --verifier que c est une usine et qu elle appartient à joueur
+prop_pre_actionUsine1 bat@(Batiment _ pb typ _ _ _ _) joueur = case typ of
+                                                                Usine _ _ _ _ -> (pb==jid joueur)
+                                                                _ -> False
+prop_pre_actionUsine2 ::Batiment->Bool --l'etat n'est pas "en cours ou terminé"
+prop_pre_actionUsine2 bat@(Batiment _ _ (Usine n u temp "en cours") _ _ _ _)=False 
+prop_pre_actionUsine2 bat@(Batiment _ _ (Usine n u temp "terminé") _ _ _ _)=False 
+prop_pre_actionUsine2 bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=True
+
+prop_post_actionUsine ::Batiment->Bool --l'etat est "en cours"
+prop_post_actionUsine bat@(Batiment _ _ (Usine n u temp "en cours") _ _ _ _)=True
+prop_post_actionUsine bat@(Batiment _ _ (Usine n u temp "terminé") _ _ _ _)=False 
+prop_post_actionUsine bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=False
+
+invariant_actionUsine ::Batiment->Batiment-> Bool --n et temps identique
+invariant_actionUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
+
+recupUsine :: Batiment -> Joueur -> Unite
+recupUsine bat@(Batiment _ _ (Usine n u temp _) _ _ _ _) joueur =
+    let newBat = bat { typeb = Usine n u temp "vide" }
+    in u
+
+prop_pre_recupUsine1::Batiment->Joueur->Bool --verifier que c est une usine et qu elle appartient à joueur
+prop_pre_recupUsine1 bat@(Batiment _ pb typ _ _ _ _) joueur = case typ of
+                                                                Usine _ _ _ _ -> (pb==jid joueur)
+                                                                _ -> False
+
+prop_pre_recupUsine2 ::Batiment->Bool --l'etat est "terminé"
+prop_pre_recupUsine2 bat@(Batiment _ _ (Usine n u temp "en cours") _ _ _ _)=False
+prop_pre_recupUsine2 bat@(Batiment _ _ (Usine n u temp "terminé") _ _ _ _)=True
+prop_pre_recupUsine2 bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=False
+
+prop_post_recupUsine ::Batiment->Bool --l'etat est "vide"
+prop_post_recupUsine bat@(Batiment _ _ (Usine n u temp "en cours") _ _ _ _)=False
+prop_post_recupUsine bat@(Batiment _ _ (Usine n u temp "terminé") _ _ _ _)=False
+prop_post_recupUsine bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=True
+
+invariant_recupUsine ::Batiment->Batiment-> Bool --n et temps identique
+invariant_recupUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
 
 
--- rajouter variable dans Usine : etat => "en cours", "terminé", "vide" 
---prop_pre_actionUsine : verifier que c est une usine et qu elle appartient à joueur
---prop_post_actionUsine : verfier l'etat => "en cours"
---invariant_actionUsine
 
---rajouter une variable dans Batiment : utilisable::Bool (permet de stopper les batiments si le joueur n'a pas d'energie)
