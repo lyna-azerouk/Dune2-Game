@@ -239,6 +239,11 @@ smartConst_env carte listejoueurs = do
                         , unites = M.empty
                         , batiments = creerListeBatConst batiments M.empty}
 
+---------------------
+-- PARTIE BATIMENT --
+---------------------
+
+
 actionRaffinerie :: Unite -> Batiment -> (Unite, Int)
 actionRaffinerie unite@(Unite _ _ (Collecteur n) _ _ _) bat =
   let nbrRessources = ressouceCollecteur unite
@@ -378,8 +383,24 @@ actionFermetureBatiment env@(Environement j c u bats) joueur =
     let listeferme = cherche_fermeture_bats listebats
     in foldl (\acc bId -> Environement j c u (M.delete bId bats)) env listeferme
 
---prop_pre_actionFermetureBatiment
---prop_post_actionFermetureBatiment
+
+-- vérifie que le joueur a au moins une unité
+prop_pre_actionFermetureBatiment::Environement->Joueur->Bool
+prop_pre_actionFermetureBatiment env@(Environement j c u bats) joueur =
+    let listebats = cherche_Joueur_Batiment joueur bats in
+        case listebats of 
+            [] -> False
+            _ -> True
+
+-- vérifie que les unités du joueur ont tous des pv > 0 
+prop_post_actionFermetureBatiment::Environement->Joueur->Bool
+prop_post_actionFermetureBatiment env@(Environement j c u bats) joueur =
+    let listebats = cherche_Joueur_Batiment joueur bats in
+    let listeferme = cherche_fermeture_bats listebats in 
+        case listeferme of 
+            [] -> True
+            _ -> False
+
 --invariant_actionFermetureBatiment
                              
 cherche_qg_joueur::[Batiment]->Bool
@@ -453,4 +474,113 @@ invariant_recupUsine ::Batiment->Batiment-> Bool --n et temps identique
 invariant_recupUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
 
 
+------------------
+-- PARTIE UNITE --
+------------------
 
+cherche_fermeture_unite::[Unite]->[UniteId]
+cherche_fermeture_unite unis =
+    foldl (\res uni -> case (caseUniDest uni) of
+                        Just idn -> idn:res
+                        _ -> res) [] unis
+    where
+        caseUniDest (Unite _ _ _ id pv _)= case pv of 
+                                                0 -> Just id
+                                                _-> Nothing
+
+actionFermetureUnite :: Environement -> Joueur -> Environement
+actionFermetureUnite env@(Environement j c unis b) joueur =  
+    let listeunis = cherche_Joueur_Unite joueur unis in
+    let listeferme = cherche_fermeture_unite listeunis
+    in foldl (\acc uId -> Environement j c (M.delete uId unis) b) env listeferme
+
+-- vérifie que le joueur a au moins une unité
+prop_pre_actionFermetureUnite::Environement->Joueur->Bool
+prop_pre_actionFermetureUnite env@(Environement j c unis b) joueur =
+    let listeunis = cherche_Joueur_Unite joueur unis in
+        case listeunis of 
+            [] -> False
+            _ -> True
+
+-- vérifie que les unités du joueur ont tous des pv > 0 
+prop_post_actionFermetureUnite::Environement->Joueur->Bool
+prop_post_actionFermetureUnite env@(Environement j c unis b) joueur =
+    let listeunis = cherche_Joueur_Unite joueur unis in
+    let listeferme = cherche_fermeture_unite listeunis in 
+        case listeferme of 
+            [] -> True
+            _ -> False
+
+--invariant_actionFermetureBatiment -> pas d'idée ? 
+data Direction = Bas
+                | Haut
+                | Gauche
+                | Droit
+                | HautGauche
+                | HautDroit
+                | BasGauche
+                | BasDroit
+
+actionDeplacerUnite :: Environement -> Unite -> Direction -> Environement
+actionDeplacerUnite env@(Environement j carte unis bats) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction =
+  let coordTerrain = case direction of
+                       Bas -> Coord x (y-1)
+                       Haut -> Coord x (y+1)
+                       Gauche -> Coord (x-1) y
+                       Droit -> Coord (x+1) y
+                       HautGauche -> Coord (x-1) (y+1)
+                       HautDroit -> Coord (x+1) (y+1)
+                       BasGauche -> Coord (x-1) (y-1)
+                       BasDroit -> Coord (x+1) (y-1)
+  in
+  let listebats = cherche_Case_Batiment coordTerrain bats
+      listeunis = cherche_Case_Unite coordTerrain unis
+  in
+  case listebats of
+    [] -> case listeunis of
+            [] -> env {unites = deplace_Unite uni coordTerrain unis}
+            _ -> env
+    _ -> env {unites = unis, batiments = bats}
+  where
+    deplace_Unite u c unis = 
+        let updatedUnite = u {coordu = c}
+        in M.insert (idu u) updatedUnite $ M.filter (\x -> coordu x /= c) unis
+
+-- vérifier que la direction est possible => case existe 
+prop_pre_actionDeplacerUnite::Environement-> Unite -> Direction->Bool
+prop_pre_actionDeplacerUnite env@(Environement _ carte unis _) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction=
+    let coordTerrain = case direction of
+                       Bas -> Coord x (y-1)
+                       Haut -> Coord x (y+1)
+                       Gauche -> Coord (x-1) y
+                       Droit -> Coord (x+1) y
+                       HautGauche -> Coord (x-1) (y+1)
+                       HautDroit -> Coord (x+1) (y+1)
+                       BasGauche -> Coord (x-1) (y-1)
+                       BasDroit -> Coord (x+1) (y-1)
+  in let terrain = getCase coordTerrain carte in 
+    case terrain of 
+        Just r -> True
+        Nothing -> False
+
+--verifier que l'unité a bien été déplacé sur la bonne case
+prop_post_actionDeplacerUnite::Environement -> Environement-> Unite -> Direction->Bool
+prop_post_actionDeplacerUnite env1@(Environement _ _ unis1 _) env2@(Environement _ _ unis2 _) uni@(Unite _ _ _ idu _ _) direction=
+    let (Coord x y) = foldl (\acc (id,unit@(Unite c _ _ _ _ _))-> if(id==idu) then c else acc) (Coord 0 0) (M.toList unis2) in
+    let coordTerrain = case direction of
+                        Bas -> Coord x (y+1)
+                        Haut -> Coord x (y-1)
+                        Gauche -> Coord (x+1) y
+                        Droit -> Coord (x-1) y
+                        HautGauche -> Coord (x+1) (y-1)
+                        HautDroit -> Coord (x-1) (y-1)
+                        BasGauche -> Coord (x+1) (y+1)
+                        BasDroit -> Coord (x-1) (y+1)
+
+    in let coordenv1 = foldl (\acc (id,unit@(Unite c _ _ _ _ _))-> if(id==idu) then c else acc) (Coord 0 0) (M.toList unis1) 
+    in (coordenv1==coordTerrain) 
+
+
+invariant_actionDeplacerUnite::Unite -> Environement -> Bool
+invariant_actionDeplacerUnite uni@(Unite _ pu tu idu pvu oru) env@( _ _ unis _) = 
+    let (Coord x y) = foldl (\acc (id,unit@(Unite c _ _ _ _ _))-> if(id==idu) then c else acc) (Coord 0 0) (M.toList unis2) in
