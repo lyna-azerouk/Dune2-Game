@@ -5,7 +5,7 @@ import Data.List
 import Carte
 import Control.Monad (when)
 import Control.Monad (foldM)
-import System.Random
+--import System.Random
 import qualified Data.Set as S
 
 newtype JoueurId = JoueurId Int deriving (Eq, Show)
@@ -96,6 +96,7 @@ data TypeOrdres = Collecter Int
     | Patrouiller Coord Coord
     | Attaquer Coord
     deriving (Eq, Show)
+    
 data Unite = Unite{
     coordu::Coord,
     propriou::JoueurId,
@@ -202,7 +203,7 @@ prop_environnement_4 (Environement _ carte@(Carte _ _ contenu) unites batiments)
                     _->False
         _ -> True) (M.toList contenu)
 
-randomCoord :: Int -> Int -> [Coord] -> IO Coord
+{-randomCoord :: Int -> Int -> [Coord] -> IO Coord
 randomCoord maxX maxY coords = do
   x <- randomRIO (0, maxX)
   y <- randomRIO (0, maxY)
@@ -216,33 +217,33 @@ whileLoop carte coords = do
   case recup of
     Just Herbe -> return coord
     _ -> whileLoop carte (coord : coords)
-
+ -}
 creerListeBatConst :: [Batiment] -> M.Map BatId Batiment -> M.Map BatId Batiment
 creerListeBatConst bats res = foldl (\acc bat@(Batiment _ _ _ idb _ _ _) -> M.insert idb bat acc) res bats
 
 
--- constructeur intelligent Environnement 
-smartConst_env :: Carte -> [Joueur] -> IO Environement
-smartConst_env carte listejoueurs = do
-  let coords = [] 
-  (batiments, _, _) <- foldM (\(bats, ns, cs) j -> do
-                          coord <- whileLoop carte cs
-                          let bat = Batiment { coordb = coord 
-                                             , propriob= jid j
-                                             , typeb = QG 15
-                                             , idb = BatId ns
-                                             , pvb = 30
-                                             , prixb = 0 }  
-                          return (bat:bats, ns+1, coord:cs)) ([], 1, coords) listejoueurs
-  return $ Environement { joueurs = listejoueurs
-                        , ecarte = carte
-                        , unites = M.empty
-                        , batiments = creerListeBatConst batiments M.empty}
-
+--constructeur intelligent Environnement 
+--smartConst_env :: Carte -> [Joueur] -> IO Environement
+--smartConst_env carte listejoueurs = do
+--  let coords = [] 
+--  (batiments, _, _) <- foldM (\(bats, ns, cs) j -> do
+ --                         coord <- whileLoop carte cs
+   --                       let bat = Batiment { coordb = coord 
+    --                                         , propriob= jid j
+      --                                       , typeb = QG 15
+      --                                       , idb = BatId ns
+       --                                      , pvb = 30
+       --                                      , prixb = 0 }  
+      --                    return (bat:bats, ns+1, coord:cs)) ([], 1, coords) listejoueurs
+ -- return $ Environement { joueurs = listejoueurs
+  --                      , ecarte = carte
+  --                      , unites = M.empty
+  --                      , batiments = creerListeBatConst batiments M.empty}
+{-
 actionRaffinerie :: Unite -> Batiment -> (Unite, Int)
 actionRaffinerie unite@(Unite _ _ (Collecteur n) _ _ _) bat =
   let nbrRessources = ressouceCollecteur unite
-  in (unite { typeu = Collecteur 0 }, nbrRessources)
+  in (unite { typeu = Collecteur 0 }, nbrRessources)  -}
 
 --prop_pre_actionRaffinerie  : vérifier que bat est une raffinerie appartenant à joueur
 prop_pre_actionRaffinerie :: Unite -> Bool
@@ -451,6 +452,5 @@ prop_post_recupUsine bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=True
 
 invariant_recupUsine ::Batiment->Batiment-> Bool --n et temps identique
 invariant_recupUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
-
 
 
