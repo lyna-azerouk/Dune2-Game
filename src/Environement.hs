@@ -87,14 +87,17 @@ instance Ord UniteId where
   (UniteId id1) <= (UniteId id2)  = id1 <= id2
   (UniteId id1) > (UniteId id2)  = id1 > id2
   (UniteId id1) >= (UniteId id2)  = id1 >= id2
-data TypeUnite = Collecteur Int
+data TypeUnite = Collecteur Int Int 
     |Combattant 
     deriving (Eq, Show)
 
-data TypeOrdres = Collecter Int
-    | Deplacer Coord
+data TypeOrdres = Collecter
+    | Deplacer Coord TypeOrdres
     | Patrouiller Coord Coord
-    | Attaquer Coord
+    | Attaquer Coord TypeOrdres
+    | PoserRaffinerie
+    | Pause
+    | Recherche
     deriving (Eq, Show)
     
 data Unite = Unite{
@@ -103,7 +106,7 @@ data Unite = Unite{
     typeu:: TypeUnite,
     idu::UniteId,
     pvu::Int, -- pv si 0 => destruction 
-    ordres::M.Map Int TypeOrdres
+    ordres::TypeOrdres
 }
 
 instance Eq Unite where 
@@ -115,7 +118,7 @@ uproprio unite@(Unite _ propriou _ _ _ _) = propriou
 
 utype :: Unite -> String
 utype unite@(Unite _ _ typeu _ _ _) = case typeu of
-    Collecteur _ -> "collecteur"
+    Collecteur _ _-> "collecteur"
     Combattant -> "combattant"
 
 upid :: Unite -> UniteId
@@ -124,13 +127,13 @@ upid unite@(Unite _ _ _ idu _ _) = idu
 upv :: Unite -> Int
 upv unite@(Unite _ _ _ _ pvu _) = pvu
 
-uordres :: Unite -> M.Map Int TypeOrdres
+uordres :: Unite ->TypeOrdres
 uordres unite@(Unite _ _ _ _ _ ordres) = ordres
 
 ressouceCollecteur :: Unite -> Int
 ressouceCollecteur unite@(Unite _ _ typeu _ _ _) =
   case typeu of
-    Collecteur n -> n
+    Collecteur n _ -> n
     _ -> 0
 
 data Environement= Environement{
@@ -222,41 +225,41 @@ creerListeBatConst :: [Batiment] -> M.Map BatId Batiment -> M.Map BatId Batiment
 creerListeBatConst bats res = foldl (\acc bat@(Batiment _ _ _ idb _ _ _) -> M.insert idb bat acc) res bats
 
 
---constructeur intelligent Environnement 
---smartConst_env :: Carte -> [Joueur] -> IO Environement
---smartConst_env carte listejoueurs = do
---  let coords = [] 
---  (batiments, _, _) <- foldM (\(bats, ns, cs) j -> do
- --                         coord <- whileLoop carte cs
-   --                       let bat = Batiment { coordb = coord 
-    --                                         , propriob= jid j
-      --                                       , typeb = QG 15
-      --                                       , idb = BatId ns
-       --                                      , pvb = 30
-       --                                      , prixb = 0 }  
-      --                    return (bat:bats, ns+1, coord:cs)) ([], 1, coords) listejoueurs
- -- return $ Environement { joueurs = listejoueurs
-  --                      , ecarte = carte
-  --                      , unites = M.empty
-  --                      , batiments = creerListeBatConst batiments M.empty}
-{-
+-- constructeur intelligent Environnement 
+smartConst_env :: Carte -> [Joueur] -> IO Environement
+smartConst_env carte listejoueurs = do
+  let coords = [] 
+  (batiments, _, _) <- foldM (\(bats, ns, cs) j -> do
+                          coord <- whileLoop carte cs
+                          let bat = Batiment { coordb = coord 
+                                             , propriob= jid j
+                                             , typeb = QG 15
+                                             , idb = BatId ns
+                                             , pvb = 30
+                                             , prixb = 0 }  
+                          return (bat:bats, ns+1, coord:cs)) ([], 1, coords) listejoueurs
+  return $ Environement { joueurs = listejoueurs
+                        , ecarte = carte
+                        , unites = M.empty
+                        , batiments = creerListeBatConst batiments M.empty}
+
 actionRaffinerie :: Unite -> Batiment -> (Unite, Int)
-actionRaffinerie unite@(Unite _ _ (Collecteur n) _ _ _) bat =
+actionRaffinerie unite@(Unite _ _ (Collecteur n max) _ _ _) bat =
   let nbrRessources = ressouceCollecteur unite
-  in (unite { typeu = Collecteur 0 }, nbrRessources)  -}
+  in (unite { typeu = Collecteur 0 }, nbrRessources)
 
 --prop_pre_actionRaffinerie  : vérifier que bat est une raffinerie appartenant à joueur
 prop_pre_actionRaffinerie :: Unite -> Bool
-prop_pre_actionRaffinerie (Unite _ _ (Collecteur n) _ _ _) = n > 0
+prop_pre_actionRaffinerie (Unite _ _ (Collecteur n _) _ _ _) = n > 0
 prop_pre_actionRaffinerie _ = False
 
 prop_post_actionRaffinerie :: Unite -> Bool
-prop_post_actionRaffinerie (Unite _ _ (Collecteur n) _ _ _) = n == 0
+prop_post_actionRaffinerie (Unite _ _ (Collecteur n _) _ _ _) = n == 0
 prop_post_actionRaffinerie _ = False
 
 invariant_actionRaffinerie :: Unite -> Bool
 invariant_actionRaffinerie (Unite _ _ Combattant _ _ _) = False
-invariant_actionRaffinerie (Unite _ _ (Collecteur _) _ _ _) = True
+invariant_actionRaffinerie (Unite _ _ (Collecteur _ _) _ _ _) = True
 invariant_actionRaffinerie _ = False
 
 creerBatiment :: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
@@ -379,8 +382,24 @@ actionFermetureBatiment env@(Environement j c u bats) joueur =
     let listeferme = cherche_fermeture_bats listebats
     in foldl (\acc bId -> Environement j c u (M.delete bId bats)) env listeferme
 
---prop_pre_actionFermetureBatiment
---prop_post_actionFermetureBatiment
+
+-- vérifie que le joueur a au moins une unité
+prop_pre_actionFermetureBatiment::Environement->Joueur->Bool
+prop_pre_actionFermetureBatiment env@(Environement j c u bats) joueur =
+    let listebats = cherche_Joueur_Batiment joueur bats in
+        case listebats of 
+            [] -> False
+            _ -> True
+
+-- vérifie que les unités du joueur ont tous des pv > 0 
+prop_post_actionFermetureBatiment::Environement->Joueur->Bool
+prop_post_actionFermetureBatiment env@(Environement j c u bats) joueur =
+    let listebats = cherche_Joueur_Batiment joueur bats in
+    let listeferme = cherche_fermeture_bats listebats in 
+        case listeferme of 
+            [] -> True
+            _ -> False
+
 --invariant_actionFermetureBatiment
                              
 cherche_qg_joueur::[Batiment]->Bool
@@ -454,3 +473,26 @@ invariant_recupUsine ::Batiment->Batiment-> Bool --n et temps identique
 invariant_recupUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
 
 
+
+
+
+        Patrouiller c1 c2 -> let ennemis=trouver_ennemis unis cu pu in case ennemis of
+                                                                    [] -> let listeunis= M.delete idu unis in 
+                                                                        Environement joueurs carte (M.insert idu uni{ordres=Deplacer c1 (Patrouiller c1 c2)} listeunis) bats
+                                                                    (Unite cen _ _ _ _ _):_-> let listeunis= M.delete idu unis in 
+                                                                        Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Patrouiller c1 c2)} listeunis) bats
+                                                                   
+        Attaquer c ordrebase -> let ennemis = cherche_Case_Unite c unis in 
+                                case ennemis of 
+                                    []-> let listeunis= M.delete idu unis in 
+                                        Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
+                                    (Unite cen pen _ iden pven _):reste -> if(pen /= pu) then 
+                                                                            if((pven-6)<=0) then let listeunis= M.delete iden unis in 
+                                                                                                let newunis = (M.insert iden uni{pvu=0} listeunis) in
+                                                                                                let newunisbis = M.delete idu newunis in
+                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
+                                                                            else 
+                                                                                let listeunis= M.delete iden unis in 
+                                                                                Environement joueurs carte (M.insert iden uni{pvu=pven-6} listeunis) bats
+
+        Pause -> env
