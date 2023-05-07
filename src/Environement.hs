@@ -5,7 +5,7 @@ import Data.List
 import Carte
 import Control.Monad (when)
 import Control.Monad (foldM)
---import System.Random
+import System.Random
 import qualified Data.Set as S
 
 newtype JoueurId = JoueurId Int deriving (Eq, Show)
@@ -35,8 +35,7 @@ instance Ord BatId where
 data TypeBatiment = QG Int -- Int = energie_prod
     | Raffinerie Int -- Int = energie_conso
     | Usine Int Unite Int String-- Int = energie_conso , Unite = unite produite et Int = temps de production
-    | Centrale Int -- Int = energie_prod
-
+    | Centrale Int  deriving(Show) -- Int = energie_prod deriving(Show)
 
 data Batiment = Batiment{
     coordb::Coord,
@@ -46,7 +45,7 @@ data Batiment = Batiment{
     pvb::Int, -- pv si 0 => destruction 
     prixb::Int, -- coût du bâtiment en crédits
     utilisable::Bool
-}
+}deriving(Show)
 
 bcoord :: Batiment -> Coord
 bcoord batiment@(Batiment coordb _ _ _ _ _ _) = coordb
@@ -78,7 +77,7 @@ btinitialisation typeb= case typeb of
     "centrale" -> Just (Centrale 15)
     _-> Nothing
 
-newtype UniteId = UniteId Int 
+newtype UniteId = UniteId Int deriving(Show)
 instance Eq UniteId where
     (UniteId a) == (UniteId b) = a == b
 
@@ -107,7 +106,7 @@ data Unite = Unite{
     idu::UniteId,
     pvu::Int, -- pv si 0 => destruction 
     ordres::TypeOrdres
-}
+}deriving(Show)
 
 instance Eq Unite where 
     (Unite c1 p1 t1 i1 pv1 or1) == (Unite c2 p2 t2 i2 pv2 or2)= (c1==c2) && (p1==p2) && (t1==t2) && (i1==i2) && (pv1==pv2) && (or1==or2)
@@ -141,7 +140,7 @@ data Environement= Environement{
     ecarte:: Carte,
     unites:: M.Map UniteId Unite,
     batiments:: M.Map BatId Batiment
-}
+} deriving(Show)
 
 chercheJoueur :: [Joueur] -> JoueurId -> Maybe Joueur
 chercheJoueur [] _ = Nothing
@@ -206,7 +205,7 @@ prop_environnement_4 (Environement _ carte@(Carte _ _ contenu) unites batiments)
                     _->False
         _ -> True) (M.toList contenu)
 
-{-randomCoord :: Int -> Int -> [Coord] -> IO Coord
+randomCoord :: Int -> Int -> [Coord] -> IO Coord
 randomCoord maxX maxY coords = do
   x <- randomRIO (0, maxX)
   y <- randomRIO (0, maxY)
@@ -220,7 +219,7 @@ whileLoop carte coords = do
   case recup of
     Just Herbe -> return coord
     _ -> whileLoop carte (coord : coords)
- -}
+
 creerListeBatConst :: [Batiment] -> M.Map BatId Batiment -> M.Map BatId Batiment
 creerListeBatConst bats res = foldl (\acc bat@(Batiment _ _ _ idb _ _ _) -> M.insert idb bat acc) res bats
 
@@ -246,7 +245,7 @@ smartConst_env carte listejoueurs = do
 actionRaffinerie :: Unite -> Batiment -> (Unite, Int)
 actionRaffinerie unite@(Unite _ _ (Collecteur n max) _ _ _) bat =
   let nbrRessources = ressouceCollecteur unite
-  in (unite { typeu = Collecteur 0 }, nbrRessources)
+  in (unite { typeu = Collecteur 0 max}, nbrRessources)
 
 --prop_pre_actionRaffinerie  : vérifier que bat est une raffinerie appartenant à joueur
 prop_pre_actionRaffinerie :: Unite -> Bool
@@ -473,26 +472,3 @@ invariant_recupUsine ::Batiment->Batiment-> Bool --n et temps identique
 invariant_recupUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
 
 
-
-
-
-        Patrouiller c1 c2 -> let ennemis=trouver_ennemis unis cu pu in case ennemis of
-                                                                    [] -> let listeunis= M.delete idu unis in 
-                                                                        Environement joueurs carte (M.insert idu uni{ordres=Deplacer c1 (Patrouiller c1 c2)} listeunis) bats
-                                                                    (Unite cen _ _ _ _ _):_-> let listeunis= M.delete idu unis in 
-                                                                        Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Patrouiller c1 c2)} listeunis) bats
-                                                                   
-        Attaquer c ordrebase -> let ennemis = cherche_Case_Unite c unis in 
-                                case ennemis of 
-                                    []-> let listeunis= M.delete idu unis in 
-                                        Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
-                                    (Unite cen pen _ iden pven _):reste -> if(pen /= pu) then 
-                                                                            if((pven-6)<=0) then let listeunis= M.delete iden unis in 
-                                                                                                let newunis = (M.insert iden uni{pvu=0} listeunis) in
-                                                                                                let newunisbis = M.delete idu newunis in
-                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
-                                                                            else 
-                                                                                let listeunis= M.delete iden unis in 
-                                                                                Environement joueurs carte (M.insert iden uni{pvu=pven-6} listeunis) bats
-
-        Pause -> env
