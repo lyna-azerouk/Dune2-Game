@@ -21,7 +21,7 @@ main :: IO ()
 main = do
     s <- readFile "assets/Carte1.txt"
     initializeAll
-    window <- createWindow "Minijeu" $ defaultWindow { windowInitialSize = V2 365  520}
+    window <- createWindow "Minijeu" $ defaultWindow { windowInitialSize = V2 365 520}
     renderer <- createRenderer window (-1) defaultRenderer
     -- initialisation de l'état du jeu
     let gameState = M.initGameState

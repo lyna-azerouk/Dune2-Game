@@ -1,4 +1,4 @@
-module Environement where
+module Environement_unitebonne where
 import qualified Data.Map.Strict as M
 import Data.Ord
 import Data.List
