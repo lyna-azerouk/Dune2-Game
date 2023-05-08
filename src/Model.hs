@@ -2,17 +2,17 @@
 module Model where
 
 import SDL
-
+import Carte
 import Keyboard (Keyboard)
 import qualified Keyboard as K
-import Environnement ( Envi)
+import Environement 
 
 
 import Data.Int (Int32)
 import qualified Data.Int as I
 
 data GameState = GameState  { carte :: Carte        -- carte actuelle
-                      , envi :: Envi          -- environnement actuel
+                      , envi :: Environement          -- environnement actuel
                       , keyboard :: Keyboard  -- l’etat du clavier
                       ,persoX :: Int
                       , persoY :: Int
@@ -22,7 +22,7 @@ data GameState = GameState  { carte :: Carte        -- carte actuelle
 
 
 --inicialisation  avec speed===4
-initGameState :: Carte -> Envi -> Modele
+initGameState :: Carte -> Environement -> GameState
 initGameState carte envi = GameState carte envi  K.createKeyboard  0 0 4
 
 
@@ -64,3 +64,4 @@ gameStep gstate kbd deltaTime =
                then moveDown else id)
 
   in modif gstate
+

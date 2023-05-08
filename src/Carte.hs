@@ -120,6 +120,10 @@ prop_allCoordInCarte_inv carte = foldl (\boolAcc (x,y) -> boolAcc && coordInCart
 prop_Coord_inv :: Coord -> Bool
 prop_Coord_inv coord = prop_positiveCoord_inv coord
 
+-- invariant generale sur Carte 
+prop_Carte_inv ::Carte ->Bool
+prop_Carte_inv  c =prop_allCoordInCarte_inv c && prop_allCoordsInBounds_inv c 
+
 
 collecteCase :: Coord -> Int -> Carte -> (Int, Carte)
 collecteCase coord@(Coord x y) r carte@(Carte _ _ contenu)
