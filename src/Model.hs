@@ -7,14 +7,12 @@ import Keyboard (Keyboard)
 import qualified Keyboard as K
 import Environement 
 
-import Carte (Carte)
 
 import Data.Int (Int32)
 import qualified Data.Int as I
 
 data GameState = GameState  { carte :: Carte        -- carte actuelle
-
-                      , envi :: Environement       -- environnement actuel
+                      , envi :: Environement          -- environnement actuel
                       , keyboard :: Keyboard  -- l’etat du clavier
                       ,persoX :: Int
                       , persoY :: Int

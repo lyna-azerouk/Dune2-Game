@@ -6,21 +6,29 @@ import Control.Concurrent (threadDelay)
 
 import Data.Set (Set)
 import qualified Data.Set as Set
-
+import SDL
 import Data.List (foldl')
 
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
-
 import Foreign.C.Types (CInt (..) )
-import Carte
-import qualified Carte as C
 
-boolToString :: Bool -> String
-boolToString True = "TRUE"
-boolToString False = "FALSE"
+import qualified SDL
+import Linear (V4(..))
+import Keyboard (Keyboard)
+import qualified Keyboard as K
+import  Model as M
 
 main :: IO ()
 main = do
-    putStrLn "je suis la "
-    putStrLn ( boolToString ( prop_positiveCoord_inv (Coord 2 1)))
+    s <- readFile "assets/Carte1.txt"
+    initializeAll
+    window <- createWindow "Minijeu" $ defaultWindow { windowInitialSize = V2 365  520}
+    renderer <- createRenderer window (-1) defaultRenderer
+    -- initialisation de l'état du jeu
+    let gameState = M.initGameState
+
+    -- initialisation de l'état du clavier
+    let kbd = K.createKeyboard
+    -- initialisation de l'état de la souri
+
+
+    --putStrLn (show (M.carte (Engine.modele engineState)))

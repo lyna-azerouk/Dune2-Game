@@ -470,4 +470,3 @@ prop_post_recupUsine bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=True
 
 invariant_recupUsine ::Batiment->Batiment-> Bool --n et temps identique
 invariant_recupUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
-
