@@ -12,7 +12,6 @@ import Data.List (foldl')
 import Foreign.C.Types (CInt (..) )
 
 import qualified SDL
-import Linear (V4(..))
 import Keyboard (Keyboard)
 import qualified Keyboard as K
 import  Model as M
