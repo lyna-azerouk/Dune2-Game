@@ -35,6 +35,9 @@ import GHC.Base (when)
 
 import Environement (Environement)
 import qualified Environement as E
+import Control.Monad (foldM)
+import qualified Data.Map as Map
+
 
 loadBackground :: Renderer-> FilePath -> TextureMap -> SpriteMap -> IO (TextureMap, SpriteMap)
 loadBackground rdr path tmap smap = do
@@ -113,20 +116,22 @@ loadUnite renderer unite tmap smap = do
 
   return (tmap',smap')
 
-afficherBatiments::Environement -> TextureMap -> SpriteMap-> Renderer-> IO(TextureMap,SpriteMap)
-afficherBatiments gameState@(E.Environement joueurs carte unis bats) tmap smap renderer=
-  foldl (\(tmap', smap') (_, bat) ->
-            let (tmap'', smap'') = loadBatiment renderer bat tmap' smap'
-            in (tmap'', smap'')
-        ) (tmap, smap) bats
+afficherBatiments :: Environement -> TextureMap -> SpriteMap -> Renderer -> IO (TextureMap, SpriteMap)
+afficherBatiments gameState@(E.Environement joueurs carte unis bats) tmap smap renderer =
+  let batTuples = fmap (\bat -> (bat, bat)) bats
+  in foldM (\(tmap', smap') (_, (batId, bat)) -> do
+               (tmap'', smap'') <- loadBatiment renderer bat tmap' smap'
+               return (tmap'', smap'')
+           ) (tmap, smap) (Map.toList batTuples)
 
-afficherUnite::Environement -> TextureMap -> SpriteMap-> Renderer-> IO(TextureMap,SpriteMap)
-afficherUnite gameState@(E.Environement joueurs carte unis bats) tmap smap renderer=
-  foldl (\(tmap', smap') (_, bat) ->
-            let (tmap'', smap'') = loadBatiment renderer bat tmap' smap'
-            in (tmap'', smap'')
-        ) (tmap, smap) unis
 
+afficherUnite :: Environement -> TextureMap -> SpriteMap -> Renderer -> IO (TextureMap, SpriteMap)
+afficherUnite gameState@(E.Environement joueurs carte unis bats) tmap smap renderer =
+  let uniTuples = Map.toList unis
+  in foldM (\(tmap', smap') (_, uni) -> do
+               (tmap'', smap'') <- loadUnite renderer uni tmap' smap'
+               return (tmap'', smap'')
+           ) (tmap, smap) uniTuples
 
 main :: IO ()
 main = do
@@ -136,40 +141,42 @@ main = do
   -- chargement de l'image du fond
   (tmap, smap) <- loadBackground renderer "assets/background.bmp" TM.createTextureMap SM.createSpriteMap
   -- chargement du personnage
-  (tmap', smap') <- loadPerso renderer "assets/perso.bmp" tmap smap
+  --(tmap', smap') <- loadPerso renderer "assets/perso.bmp" tmap smap
   -- initialisation de l'état du jeu
   let gameState = M.initGameState 2
   -- initialisation de l'état du clavier
   let kbd = K.createKeyboard
   -- lancement de la gameLoop
-  (tmap'',smap'')<- afficherBatiments gameState tmap' smap' renderer
+  (tmap', smap') <- gameState >>= \gameState' ->
+                  afficherBatiments gameState' tmap smap renderer
+
   -- (tmap''',smap''')<- afficherUnite gameState tmap'' smap'' renderer
   gameLoop 60 renderer tmap' smap' kbd gameState
 
 gameLoop :: (RealFrac a, Show a) => a -> Renderer -> TextureMap -> SpriteMap -> Keyboard -> IO Environement -> IO ()
-gameLoop frameRate renderer tmap smap kbd gameState = --do
-  --startTime <- time
-  --events <- pollEvents
-  --let (kbd', mouse) = K.handleEvents events kbd
-  --clear renderer
+gameLoop frameRate renderer tmap smap kbd gameState = do
+  startTime <- time
+  events <- pollEvents
+  let (kbd', mouse) = K.handleEvents events kbd
+  clear renderer
   --- display background
-  --S.displaySprite renderer tmap (SM.fetchSprite (SpriteId "background") smap)
+  S.displaySprite renderer tmap (SM.fetchSprite (SpriteId "background") smap)
   ---
-  --present renderer
-  --endTime <- time
-  --let refreshTime = endTime - startTime
-  --let delayTime = floor (((1.0 / frameRate) - refreshTime) * 1000)
-  --threadDelay $ delayTime * 1000 -- microseconds
-  --endTime <- time
-  --let deltaTime = endTime - startTime
+  present renderer
+  endTime <- time
+  let refreshTime = endTime - startTime
+  let delayTime = floor (((1.0 / frameRate) - refreshTime) * 1000)
+  threadDelay $ delayTime * 1000 -- microseconds
+  endTime <- time
+  let deltaTime = endTime - startTime
   -- putStrLn $ "Delta time: " <> (show (deltaTime * 1000)) <> " (ms)"
   -- putStrLn $ "Frame rate: " <> (show (1 / deltaTime)) <> " (frame/s)"
   
   --- update du game state
 
 
-  --unless (K.keypressed KeycodeEscape kbd') 
-    --(gameLoop frameRate renderer tmap smap kbd' gameState
-      --)
+  unless (K.keypressed KeycodeEscape kbd') 
+    (gameLoop frameRate renderer tmap smap kbd' gameState
+      )
   
 -- (gameLoop frameRate renderer tmap smap kbd' gameState')
