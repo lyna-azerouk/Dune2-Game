@@ -1,14 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import qualified SDL
+import qualified SDL.Primitive as SDLp
+import Linear.V4 (V4(..))
+import Linear.V2 (V2(..))
 import Control.Monad (unless)
 import Control.Concurrent (threadDelay)
-
+import Foreign.C.Types (CInt)
+import Data.Word (Word8)
 import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Data.List (foldl')
-
+import SDL (Renderer, V2(..), Rectangle(..), Texture, createTextureFromSurface, copy, destroyTexture, freeSurface)
+import qualified SDL.Font as Font
+import qualified SDL.Primitive as SDLp
+import qualified SDL.Video as SDLVideo
+import qualified Data.Text as Text
+import Foreign.C.Types (CInt)
+import Linear (V4(..))
 import Foreign.C.Types (CInt (..) )
 
 import SDL
@@ -38,6 +49,11 @@ import qualified Environement as E
 import Control.Monad (foldM)
 import qualified Data.Map as Map
 
+import qualified SDL
+import qualified SDL.Font as Font
+import qualified SDL.Primitive as SDLPrimitives
+import qualified Data.Text as Text
+import qualified SDL.Video as SDLVideo
 
 loadBackground :: Renderer-> FilePath -> TextureMap -> SpriteMap -> IO (TextureMap, SpriteMap)
 loadBackground rdr path tmap smap = do
@@ -133,13 +149,95 @@ afficherUnite gameState@(E.Environement joueurs carte unis bats) tmap smap rende
                return (tmap'', smap'')
            ) (tmap, smap) uniTuples
 
+
+-- Dimensions de la fenêtre
+windowWidth :: Int
+windowWidth = 800
+
+windowHeight :: Int
+windowHeight = 650
+
+-- Couleur du rectangle
+rectangleColor :: V4 Word8
+rectangleColor = V4 255 0 0 255 -- Rouge (RVBA)
+
+-- Couleur de la ligne
+lineColor :: V4 Word8
+lineColor = V4 0 255 0 255 -- Vert (RVBA)
+
+-- Couleur du texte
+textColor :: V4 Word8
+textColor = V4 0 0 0 255 -- Noir (RVBA)
+
 main :: IO ()
+main = do
+  Font.initialize -- Initialise SDL-ttf
+  window <- SDL.createWindow "SDL Rectangle" SDL.defaultWindow -- Crée une fenêtre
+    { SDL.windowInitialSize = V2 (fromIntegral windowWidth) (fromIntegral windowHeight)
+    }
+
+  renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer -- Crée un rendu pour la fenêtre
+  --font <- Font.load "giulianicarla/Desktop/rambaultxboldregular.ttf" 24-- Charge une police de caractères
+
+  SDL.rendererDrawColor renderer SDL.$= V4 255 255 255 255 -- Définit la couleur de fond du rendu (blanc)
+  SDL.clear renderer -- Efface le rendu avec la couleur de fond
+  let linePosition= V2 0 0
+      lineSize = V2 200 650
+
+  -- Dessine la ligne
+  SDLp.fillRectangle renderer linePosition lineSize lineColor
+  let rectPosition = V2 25 25 -- Position du rectangle (50/2 = 25 pour le centrage)
+      rectSize = V2 125 75 -- Taille du rectangle
+
+  -- Dessine le rectangle
+  SDLp.fillRectangle renderer rectPosition rectSize rectangleColor
+
+  let text = "Hello, SDL!"
+
+    -- Rendu du texte
+  --surface <- Font.blended font textColor text -- Rendu du texte sur une surface
+  --texture <- SDL.createTextureFromSurface renderer surface -- Création d'une texture à partir de la surface
+  --SDL.freeSurface surface -- Libération de la surface
+
+  -- Position du texte
+  --let textPosition = V2 25 25 -- Position du rectangle (50/2 = 25 pour le centrage)
+    --  textSize = V2 125 75 -- Taille du rectangle
+
+  -- Affichage du texte
+  --SDL.copy renderer texture Nothing (Just (SDL.Rectangle (SDL.P textPosition) textSize))
+ 
+  SDL.present renderer -- Affiche le rendu à l'écran
+
+  loop -- Boucle principale
+
+  SDL.destroyRenderer renderer -- Détruit le rendu
+  SDL.destroyWindow window -- Ferme la fenêtre
+  SDL.quit -- Quitte SDL
+
+-- Boucle principale pour maintenir la fenêtre ouverte
+loop :: IO ()
+loop = do
+  events <- SDL.pollEvents -- Récupère les événements
+  let quit = any isQuitEvent events
+  if quit
+    then return ()
+    else loop
+
+-- Vérifie si un événement est un événement de fermeture de la fenêtre
+isQuitEvent :: SDL.Event -> Bool
+isQuitEvent event = case SDL.eventPayload event of
+  SDL.QuitEvent -> True
+  _             -> False
+
+
+
+{-main :: IO ()
 main = do
   initializeAll
   window <- createWindow "Minijeu" $ defaultWindow { windowInitialSize = V2 640 480 }
   renderer <- createRenderer window (-1) defaultRenderer
   -- chargement de l'image du fond
-  (tmap, smap) <- loadBackground renderer "assets/background.bmp" TM.createTextureMap SM.createSpriteMap
+  --(tmap, smap) <- loadBackground renderer "assets/background.bmp" TM.createTextureMap SM.createSpriteMap
   -- chargement du personnage
   --(tmap', smap') <- loadPerso renderer "assets/perso.bmp" tmap smap
   -- initialisation de l'état du jeu
@@ -148,7 +246,7 @@ main = do
   let kbd = K.createKeyboard
   -- lancement de la gameLoop
   (tmap', smap') <- gameState >>= \gameState' ->
-                  afficherBatiments gameState' tmap smap renderer
+                  afficherBatiments gameState'  TM.createTextureMap SM.createSpriteMap renderer
 
   -- (tmap''',smap''')<- afficherUnite gameState tmap'' smap'' renderer
   gameLoop 60 renderer tmap' smap' kbd gameState
@@ -179,4 +277,4 @@ gameLoop frameRate renderer tmap smap kbd gameState = do
     (gameLoop frameRate renderer tmap smap kbd' gameState
       )
   
--- (gameLoop frameRate renderer tmap smap kbd' gameState')
+-- (gameLoop frameRate renderer tmap smap kbd' gameState')-}

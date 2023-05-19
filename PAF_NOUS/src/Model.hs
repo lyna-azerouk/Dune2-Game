@@ -17,7 +17,7 @@ data GameState = GameState { persoX :: Int
 
 
 initGameState :: Int -> IO Environement
-initGameState nbr = let carte = C.createCarte "texte"
+initGameState nbr = let carte = C.createCarte "HHHHHHHHHHHHHH"
                         listejoueurs = E.creerJoueur nbr in
                    E.smartConst_env carte listejoueurs
 
