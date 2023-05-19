@@ -177,7 +177,7 @@ main = do
     }
 
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer -- Crée un rendu pour la fenêtre
-  --font <- Font.load "giulianicarla/Desktop/rambaultxboldregular.ttf" 24-- Charge une police de caractères
+  font <- Font.load "assets/rambaultxboldregular.ttf" 24-- Charge une police de caractères
 
   SDL.rendererDrawColor renderer SDL.$= V4 255 255 255 255 -- Définit la couleur de fond du rendu (blanc)
   SDL.clear renderer -- Efface le rendu avec la couleur de fond
@@ -192,19 +192,19 @@ main = do
   -- Dessine le rectangle
   SDLp.fillRectangle renderer rectPosition rectSize rectangleColor
 
-  let text = "Hello, SDL!"
+  let text = "Deplacer"
 
     -- Rendu du texte
-  --surface <- Font.blended font textColor text -- Rendu du texte sur une surface
-  --texture <- SDL.createTextureFromSurface renderer surface -- Création d'une texture à partir de la surface
-  --SDL.freeSurface surface -- Libération de la surface
+  surface <- Font.blended font textColor text -- Rendu du texte sur une surface
+  texture <- SDL.createTextureFromSurface renderer surface -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface -- Libération de la surface
 
   -- Position du texte
-  --let textPosition = V2 25 25 -- Position du rectangle (50/2 = 25 pour le centrage)
-    --  textSize = V2 125 75 -- Taille du rectangle
+  let textPosition = V2 25 25 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize = V2 100 50 -- Taille du rectangle
 
   -- Affichage du texte
-  --SDL.copy renderer texture Nothing (Just (SDL.Rectangle (SDL.P textPosition) textSize))
+  SDL.copy renderer texture Nothing (Just (SDL.Rectangle (SDL.P textPosition) textSize))
  
   SDL.present renderer -- Affiche le rendu à l'écran
 
