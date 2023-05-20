@@ -251,18 +251,21 @@ main = do
   SDL.copy renderer texture3 Nothing (Just (SDL.Rectangle (SDL.P textPosition3) textSize3))
 
   -- Dessin d'une ligne horizontale
-  let lineWidth = 200 -- Longueur de la ligne
-      lineHeight = 2 -- Épaisseur de la ligne
+  let lineWidth = 2 -- Longueur de la ligne
+      lineHeight = 800-- Épaisseur de la ligne
+      startOffset = 200 -- Décalage de départ des lignes verticales
   
   SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
 
    -- Dessin des lignes verticales
-  let verticalLines = map fromIntegral [0, gridSize .. windowWidth]
+  let verticalLines = map (\x -> fromIntegral (x + startOffset)) [0, gridSize .. windowWidth]
   mapM_ (\x -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 x 0)) (V2 lineWidth lineHeight)))) verticalLines
 
-  -- Dessin des lignes horizontales
-  let horizontalLines = map fromIntegral [0, gridSize .. windowHeight]
-  mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 0 y)) (V2 lineWidth lineHeight)))) horizontalLines
+   -- Dessin des lignes horizontales
+  let lineWidth2 = fromIntegral (windowWidth - startOffset)
+      lineHeight2 = 2
+      horizontalLines = map (\y -> fromIntegral y) [0, gridSize .. windowHeight]
+  mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines
 
   SDL.present renderer -- Affiche le rendu à l'écran
 
