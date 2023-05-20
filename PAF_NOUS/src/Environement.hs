@@ -7,6 +7,7 @@ import Control.Monad (when)
 import Control.Monad (foldM)
 import System.Random
 import qualified Data.Set as S
+import Control.Monad (replicateM)
 
 newtype JoueurId = JoueurId Int deriving (Eq, Show)
 data Joueur = Joueur{
@@ -146,7 +147,8 @@ data Environement= Environement{
     joueurs:: [Joueur],
     ecarte:: Carte,
     unites:: M.Map UniteId Unite,
-    batiments:: M.Map BatId Batiment
+    batiments:: M.Map BatId Batiment,
+    ennemis::[Coord]
 }
 
 chercheJoueur :: [Joueur] -> JoueurId -> Maybe Joueur
@@ -170,7 +172,7 @@ cherche_Case_Unite coord unis =
 
 -- prop_environnement_1 vérifie que chaque bâtiment et unité appartient à un joueur de l'environnement
 prop_environnement_1 :: Environement -> Bool
-prop_environnement_1 env@(Environement joueurs _ unites batiments) =
+prop_environnement_1 env@(Environement joueurs _ unites batiments _) =
     all (\(_, uni@(Unite _ propriou _ _ _ _)) ->case chercheJoueur joueurs propriou of
                                                 Just _ -> True
                                                 Nothing -> False) (M.toList unites)
@@ -181,14 +183,14 @@ prop_environnement_1 env@(Environement joueurs _ unites batiments) =
 
 -- prop_environnement_2 vérifie que chaque case Eau est vide 
 prop_environnement_2 :: Environement -> Bool
-prop_environnement_2 (Environement _ carte@(Carte _ _ contenu) unites batiments) =
+prop_environnement_2 (Environement _ carte@(Carte _ _ contenu) unites batiments _) =
     all (\(c, terrain) -> case terrain of
         Eau -> null (cherche_Case_Batiment c batiments) && null (cherche_Case_Unite c unites)
         _ -> True) (M.toList contenu)
 
 -- prop_environnement_3 vérifie que chaque case Herbe contient au max un bâtiment ou une unité
 prop_environnement_3:: Environement -> Bool
-prop_environnement_3 (Environement _ carte@(Carte _ _ contenu) unites batiments) =
+prop_environnement_3 (Environement _ carte@(Carte _ _ contenu) unites batiments _) =
     all (\(c, terrain) -> case terrain of
         Herbe -> case (cherche_Case_Batiment c batiments) of 
                 []-> True
@@ -203,7 +205,7 @@ prop_environnement_3 (Environement _ carte@(Carte _ _ contenu) unites batiments)
 
 -- prop_environnement_4 vérifie que chaque case Ressource contient au max une unité
 prop_environnement_4 :: Environement -> Bool
-prop_environnement_4 (Environement _ carte@(Carte _ _ contenu) unites batiments) =
+prop_environnement_4 (Environement _ carte@(Carte _ _ contenu) unites batiments _) =
     all (\(c, terrain) -> case terrain of
         Eau -> null (cherche_Case_Batiment c batiments) 
                 &&  case (cherche_Case_Unite c unites) of
@@ -227,15 +229,23 @@ whileLoop carte coords = do
     Just Herbe -> return coord
     _ -> whileLoop carte (coord : coords)
 
+whileLoopEnnemis :: Carte ->[Coord] -> IO Coord
+whileLoopEnnemis carte coords = do
+  coord <- randomCoord (cartel carte) (carteh carte) coords
+  return coord
+  
+
 creerListeBatConst :: [Batiment] -> M.Map BatId Batiment -> M.Map BatId Batiment
 creerListeBatConst bats res = foldl (\acc bat@(Batiment _ _ _ idb _ _ _) -> M.insert idb bat acc) res bats
 
+creerListeEnnemis :: Carte -> [Coord] -> IO [Coord]
+creerListeEnnemis carte coords = replicateM 6 (whileLoop carte coords)
 
 -- constructeur intelligent Environnement 
 smartConst_env :: Carte -> [Joueur] -> IO Environement
 smartConst_env carte listejoueurs = do
   let coords = [] 
-  (batiments, _, _) <- foldM (\(bats, ns, cs) j -> do
+  (batiments, _, coords) <- foldM (\(bats, ns, cs) j -> do
                           coord <- whileLoop carte cs
                           let bat = Batiment { coordb = coord 
                                              , propriob= jid j
@@ -244,10 +254,13 @@ smartConst_env carte listejoueurs = do
                                              , pvb = 30
                                              , prixb = 0 }  
                           return (bat:bats, ns+1, coord:cs)) ([], 1, coords) listejoueurs
+  listeEnnemis <- creerListeEnnemis carte coords
   return $ Environement { joueurs = listejoueurs
                         , ecarte = carte
                         , unites = M.empty
-                        , batiments = creerListeBatConst batiments M.empty}
+                        , batiments = creerListeBatConst batiments M.empty
+                        , ennemis = listeEnnemis
+                        }
 
 ---------------------
 -- PARTIE BATIMENT --
@@ -274,7 +287,7 @@ invariant_actionRaffinerie (Unite _ _ (Collecteur _ _) _ _ _) = True
 invariant_actionRaffinerie _ = False
 
 creerBatiment :: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
-creerBatiment j typeBat env@(Environement _ _ _ bats) c idglobal prixbat pvbat =
+creerBatiment j typeBat env@(Environement _ _ _ bats _) c idglobal prixbat pvbat =
     let t = btinitialisation typeBat in 
     case t of 
         Nothing -> (False, env)
@@ -290,13 +303,13 @@ creerBatiment j typeBat env@(Environement _ _ _ bats) c idglobal prixbat pvbat =
             in (True, newEnv)
 
 prop_pre_creerBatiment1::Environement-> Coord->Bool
-prop_pre_creerBatiment1 env@(Environement _ carte _ _) coord = let t = getCase coord carte in 
+prop_pre_creerBatiment1 env@(Environement _ carte _ _ _) coord = let t = getCase coord carte in 
     case t of 
     Just Herbe -> True 
     _ -> False
 
 prop_pre_creerBatiment2 :: Environement -> Coord -> Bool
-prop_pre_creerBatiment2 env@(Environement _ carte unis bats) coord = 
+prop_pre_creerBatiment2 env@(Environement _ carte unis bats _) coord = 
     let res1 = cherche_Case_Batiment coord bats 
         res2 = cherche_Case_Unite coord unis 
     in case res1 of 
@@ -307,13 +320,13 @@ prop_pre_creerBatiment2 env@(Environement _ carte unis bats) coord =
 
 
 prop_post_creerBatiment1::Environement -> Coord -> String -> Bool
-prop_post_creerBatiment1 env@(Environement _ _ _ bats) coord ty = 
+prop_post_creerBatiment1 env@(Environement _ _ _ bats _) coord ty = 
     case (cherche_Case_Batiment coord bats) of 
     b:[] -> let typ = btype b in if(typ==ty) then True else False
     _ -> False
 
 prop_post_creerBatiment2::Environement->Environement -> Coord -> String -> Bool
-prop_post_creerBatiment2 env@(Environement j carte unis bats) envnew@(Environement newj newcarte newunis newbats) coord ty = 
+prop_post_creerBatiment2 env@(Environement j carte unis bats _) envnew@(Environement newj newcarte newunis newbats _) coord ty = 
     if ((j==newj && carte==newcarte) && unis==newunis) then let keys1 = M.keysSet bats in
        let keys2 = M.keysSet newbats
     in (keys1 `S.isSubsetOf` keys2)
@@ -334,7 +347,7 @@ cherche_Joueur_Unite joueur unis=
     caseUniteJoueur(Unite _ p _ _ _ _) joueur = p == (jid joueur)
 
 actionProductionEnergie::Environement->Joueur->Int
-actionProductionEnergie env@(Environement _ _ _ bats) joueur =  
+actionProductionEnergie env@(Environement _ _ _ bats _) joueur =  
     let listebats=cherche_Joueur_Batiment joueur bats in 
     
     foldl (\res bat -> (caseBatJoueur bat joueur)+res) 0 listebats
@@ -349,7 +362,7 @@ actionProductionEnergie env@(Environement _ _ _ bats) joueur =
 --invariant_actionProductionEnergie
 
 actionConsommationEnergie::Environement->Joueur->Int
-actionConsommationEnergie env@(Environement _ _ _ bats) joueur =  
+actionConsommationEnergie env@(Environement _ _ _ bats _) joueur =  
     let listebats=cherche_Joueur_Batiment joueur bats in 
     
     foldl (\res bat -> (caseBatJoueur bat joueur)+res) 0 listebats
@@ -364,7 +377,7 @@ actionConsommationEnergie env@(Environement _ _ _ bats) joueur =
 --invariant_actionConsommationEnergie
 
 stopperEnergie :: Environement -> Joueur -> Environement
-stopperEnergie env@(Environement j carte unis bats) joueur = 
+stopperEnergie env@(Environement j carte unis bats enns) joueur = 
   let prod = actionProductionEnergie env joueur 
       conso = actionConsommationEnergie env joueur 
   in 
@@ -374,7 +387,7 @@ stopperEnergie env@(Environement j carte unis bats) joueur =
                                           then bat { utilisable = False } 
                                           else bat
                             in M.insert batid newBat acc) M.empty (M.toList bats)
-      in Environement j carte unis newbats
+      in Environement j carte unis newbats enns
 
 
 cherche_fermeture_bats::[Batiment]->[BatId]
@@ -388,15 +401,15 @@ cherche_fermeture_bats bats =
                                                 _-> Nothing
 
 actionFermetureBatiment :: Environement -> Joueur -> Environement
-actionFermetureBatiment env@(Environement j c u bats) joueur =  
+actionFermetureBatiment env@(Environement j c u bats enns) joueur =  
     let listebats = cherche_Joueur_Batiment joueur bats in
     let listeferme = cherche_fermeture_bats listebats
-    in foldl (\acc bId -> Environement j c u (M.delete bId bats)) env listeferme
+    in foldl (\acc bId -> Environement j c u (M.delete bId bats) enns) env listeferme
 
 
 -- vérifie que le joueur a au moins une unité
 prop_pre_actionFermetureBatiment::Environement->Joueur->Bool
-prop_pre_actionFermetureBatiment env@(Environement j c u bats) joueur =
+prop_pre_actionFermetureBatiment env@(Environement j c u bats _) joueur =
     let listebats = cherche_Joueur_Batiment joueur bats in
         case listebats of 
             [] -> False
@@ -404,7 +417,7 @@ prop_pre_actionFermetureBatiment env@(Environement j c u bats) joueur =
 
 -- vérifie que les unités du joueur ont tous des pv > 0 
 prop_post_actionFermetureBatiment::Environement->Joueur->Bool
-prop_post_actionFermetureBatiment env@(Environement j c u bats) joueur =
+prop_post_actionFermetureBatiment env@(Environement j c u bats _) joueur =
     let listebats = cherche_Joueur_Batiment joueur bats in
     let listeferme = cherche_fermeture_bats listebats in 
         case listeferme of 
@@ -422,7 +435,7 @@ cherche_qg_joueur bats =
                                                 _-> False
 
 verificationDestruction::Environement->Environement
-verificationDestruction env@(Environement joueurs carte unis bats) =
+verificationDestruction env@(Environement joueurs carte unis bats enns) =
     foldl (\acc joueur@(Joueur idj _ _)-> let listebats = cherche_Joueur_Batiment joueur bats in
                 case (cherche_qg_joueur listebats) of
                 True -> let newjoueurs =  filter (\j@(Joueur id name credit)->
@@ -432,7 +445,7 @@ verificationDestruction env@(Environement joueurs carte unis bats) =
                         let newunis = foldl (\acc uni@(Unite _ _ _ idu _ _) -> (M.delete idu acc)) unis listeunite in
                         let newbats = foldl (\acc bat@(Batiment _ _ _ idb _ _ _) -> (M.delete idb acc)) bats listebats
                         in 
-                        Environement newjoueurs carte newunis newbats
+                        Environement newjoueurs carte newunis newbats enns
                 False -> acc
              ) env joueurs
      
@@ -499,14 +512,14 @@ cherche_fermeture_unite unis =
                                                 _-> Nothing
 
 actionFermetureUnite :: Environement -> Joueur -> Environement
-actionFermetureUnite env@(Environement j c unis b) joueur =  
+actionFermetureUnite env@(Environement j c unis b enns) joueur =  
     let listeunis = cherche_Joueur_Unite joueur unis in
     let listeferme = cherche_fermeture_unite listeunis
-    in foldl (\acc uId -> Environement j c (M.delete uId unis) b) env listeferme
+    in foldl (\acc uId -> Environement j c (M.delete uId unis) b enns) env listeferme
 
 -- vérifie que le joueur a au moins une unité
 prop_pre_actionFermetureUnite::Environement->Joueur->Bool
-prop_pre_actionFermetureUnite env@(Environement j c unis b) joueur =
+prop_pre_actionFermetureUnite env@(Environement j c unis b _) joueur =
     let listeunis = cherche_Joueur_Unite joueur unis in
         case listeunis of 
             [] -> False
@@ -514,7 +527,7 @@ prop_pre_actionFermetureUnite env@(Environement j c unis b) joueur =
 
 -- vérifie que les unités du joueur ont tous des pv > 0 
 prop_post_actionFermetureUnite::Environement->Joueur->Bool
-prop_post_actionFermetureUnite env@(Environement j c unis b) joueur =
+prop_post_actionFermetureUnite env@(Environement j c unis b _) joueur =
     let listeunis = cherche_Joueur_Unite joueur unis in
     let listeferme = cherche_fermeture_unite listeunis in 
         case listeferme of 
@@ -529,7 +542,7 @@ data Direction = Bas
                 deriving(Eq,Show)
 
 actionDeplacerUnite :: Environement -> Unite -> Direction -> Environement
-actionDeplacerUnite env@(Environement j carte unis bats) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction =
+actionDeplacerUnite env@(Environement j carte unis bats _) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction =
   let coordTerrain = case direction of
                        Bas -> Coord x (y-1)
                        Haut -> Coord x (y+1)
@@ -551,7 +564,7 @@ actionDeplacerUnite env@(Environement j carte unis bats) uni@(Unite coord@(Coord
 
 -- vérifier que la direction est possible => case existe 
 prop_pre_actionDeplacerUnite::Environement-> Unite -> Direction->Bool
-prop_pre_actionDeplacerUnite env@(Environement _ carte unis _) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction=
+prop_pre_actionDeplacerUnite env@(Environement _ carte unis _ _) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction=
     let coordTerrain = case direction of
                        Bas -> Coord x (y-1)
                        Haut -> Coord x (y+1)
@@ -565,7 +578,7 @@ prop_pre_actionDeplacerUnite env@(Environement _ carte unis _) uni@(Unite coord@
 
 --verifier que l'unité a bien été déplacé sur la bonne case
 prop_post_actionDeplacerUnite::Environement -> Environement-> Unite -> Direction->Bool
-prop_post_actionDeplacerUnite env1@(Environement _ _ unis1 _) env2@(Environement _ _ unis2 _) uni@(Unite _ _ _ idu _ _) direction=
+prop_post_actionDeplacerUnite env1@(Environement _ _ unis1 _ _) env2@(Environement _ _ unis2 _ _) uni@(Unite _ _ _ idu _ _) direction=
     let (Coord x y) = foldl (\acc (id,unit@(Unite c _ _ _ _ _))-> if(id==idu) then c else acc) (Coord 0 0) (M.toList unis2) in
     let coordTerrain = case direction of
                         Bas -> Coord x (y+1)
@@ -616,12 +629,12 @@ trouver_raffinerie bats joueur =
     
 
 modifier_credit :: JoueurId -> Environement -> Int -> Environement
-modifier_credit idj env@(Environement joueurs carte unis bats) newcred =
+modifier_credit idj env@(Environement joueurs carte unis bats enns) newcred =
     let updated_joueurs = map (\j@(Joueur id _ cred) ->
                                 if (id == idj)
                                     then Joueur id "" (cred + newcred)
                                     else j) joueurs
-    in Environement updated_joueurs carte unis bats
+    in Environement updated_joueurs carte unis bats enns
 
 
 situer_A_une_Case::Coord->Coord->Bool
@@ -638,32 +651,32 @@ trouver_ennemis unis coord joueur =
 
 -- il y aura plus tard un pb car on déplace l'unité aux coord de la raffinerie mais vu qu'il y a un batiment l'unité ne va pas aller dessus
 etape::Environement->Unite->Environement
-etape env@(Environement joueurs carte@(Carte l h contenu) unis bats) uni@(Unite cu pu tu idu pvu ordresu) =
+etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(Unite cu pu tu idu pvu ordresu) =
     case ordresu of
         Deplacer c ordrebase ->   case tu of
                                     Combattant -> case (trouver_ennemis unis cu pu) of
                                                     (Unite cen _ _ _ _ _):reste ->let listeunis= M.delete idu unis in 
-                                                        Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Deplacer c ordrebase)} listeunis) bats
+                                                        Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Deplacer c ordrebase)} listeunis) bats enns
                                                     [] ->let direction = calculDirection cu c in case direction of 
                                                                                                 Just d -> actionDeplacerUnite env uni d
                                                                                                 Nothing -> case ordrebase of
                                                                                                             Patrouiller c1 c2 -> let listeunis= M.delete idu unis in 
-                                                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Patrouiller c2 c1} listeunis) bats
+                                                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Patrouiller c2 c1} listeunis) bats enns
                                                                                                             _ -> let listeunis= M.delete idu unis in 
-                                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
+                                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats enns
                                     Collecteur _ _ -> let direction = calculDirection cu c in case direction of 
                                                                                                 Just d -> actionDeplacerUnite env uni d
                                                                                                 Nothing -> case ordrebase of
                                                                                                             Collecter -> let listeunis= M.delete idu unis in 
-                                                                                                                        Environement joueurs carte (M.insert idu uni{ordres=PoserRaffinerie} listeunis) bats
+                                                                                                                        Environement joueurs carte (M.insert idu uni{ordres=PoserRaffinerie} listeunis) bats enns
                                                                                                             Recherche -> let listeunis= M.delete idu unis in 
-                                                                                                                        Environement joueurs carte (M.insert idu uni{ordres=Collecter} listeunis) bats
+                                                                                                                        Environement joueurs carte (M.insert idu uni{ordres=Collecter} listeunis) bats enns
                                                                                                             _ -> let listeunis= M.delete idu unis in 
-                                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
+                                                                                                                Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats enns
         Collecter -> let (Collecteur n max) = tu in if(n==max) then let coordraf = coordRaffinerie bats pu in 
                                                                     let listeunis= M.delete idu unis in 
                                                                         case coordraf of 
-                                                                            raf:[]-> Environement joueurs carte (M.insert idu uni{ordres=Deplacer raf Collecter} listeunis) bats
+                                                                            raf:[]-> Environement joueurs carte (M.insert idu uni{ordres=Deplacer raf Collecter} listeunis) bats enns
                                                                             _ -> env 
                                                     else 
                                                         let carre = getCase cu carte in 
@@ -671,15 +684,15 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats) uni@(Unite 
                                                                 Just (Ressource r) -> let valres = let res=n+r in if res>max then max else res
                                                                                           newcarte= M.delete cu contenu
                                                                                           listeunis= M.delete idu unis             
-                                                                                in Environement joueurs (Carte h l (M.insert cu (Ressource (r-(valres-n))) contenu )) (M.insert idu uni{typeu=Collecteur valres max} listeunis) bats
+                                                                                in Environement joueurs (Carte h l (M.insert cu (Ressource (r-(valres-n))) contenu )) (M.insert idu uni{typeu=Collecteur valres max} listeunis) bats enns
                                                                 
                                                                 _ -> let listeunis= M.delete idu unis in 
                                                                     let (Carte l h contenu)=carte
                                                                         (Coord x y )=cu in
-                                                                    if(x>0 && x<l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord (x+1) y) Recherche} listeunis) bats
-                                                                    else if(y>0 && y<l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord x (y+1)) Recherche} listeunis) bats
-                                                                        else if(x==l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord (x-1) y) Recherche} listeunis) bats
-                                                                            else Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord x (y-1)) Recherche} listeunis) bats
+                                                                    if(x>0 && x<l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord (x+1) y) Recherche} listeunis) bats enns
+                                                                    else if(y>0 && y<l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord x (y+1)) Recherche} listeunis) bats enns
+                                                                        else if(x==l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord (x-1) y) Recherche} listeunis) bats enns
+                                                                            else Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord x (y-1)) Recherche} listeunis) bats enns
 
 
         PoserRaffinerie  -> let raf = trouver_raffinerie bats pu in let (Collecteur val max) = tu in 
@@ -689,22 +702,22 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats) uni@(Unite 
 
         Patrouiller c1 c2 -> let ennemis=trouver_ennemis unis cu pu in case ennemis of
                                                                     [] -> let listeunis= M.delete idu unis in 
-                                                                        Environement joueurs carte (M.insert idu uni{ordres=Deplacer c1 (Patrouiller c1 c2)} listeunis) bats
+                                                                        Environement joueurs carte (M.insert idu uni{ordres=Deplacer c1 (Patrouiller c1 c2)} listeunis) bats enns
                                                                     (Unite cen _ _ _ _ _):reste-> let listeunis= M.delete idu unis in 
-                                                                        Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Patrouiller c1 c2)} listeunis) bats
+                                                                        Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Patrouiller c1 c2)} listeunis) bats enns
 
         Attaquer c ordrebase -> let ennemis = cherche_Case_Unite c unis in 
                                 case ennemis of 
                                     []-> let listeunis= M.delete idu unis in 
-                                        Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
+                                        Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats enns
                                     (Unite cen pen _ iden pven _):reste -> if pen /= pu then 
                                         if((pven-6)<=0) then let listeunis= M.delete iden unis in 
                                                             let newunis = (M.insert iden uni{pvu=0} listeunis) in
                                                             let newunisbis = M.delete idu newunis in
-                                                            Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats
+                                                            Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats enns
                                         else 
                                             let listeunis= M.delete iden unis in 
-                                            Environement joueurs carte (M.insert iden uni{pvu=pven-6} listeunis) bats
+                                            Environement joueurs carte (M.insert iden uni{pvu=pven-6} listeunis) bats enns
                                         else env
         
         Pause -> env

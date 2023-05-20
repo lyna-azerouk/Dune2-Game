@@ -139,7 +139,7 @@ loadUnite renderer unite tmap smap = do
   return (tmap',smap')
 
 afficherBatiments :: Environement -> TextureMap -> SpriteMap -> Renderer -> IO (TextureMap, SpriteMap)
-afficherBatiments gameState@(E.Environement joueurs carte unis bats) tmap smap renderer =
+afficherBatiments gameState@(E.Environement joueurs carte unis bats _) tmap smap renderer =
   let batTuples = fmap (\bat -> (bat, bat)) bats
   in foldM (\(tmap', smap') (_, (batId, bat)) -> do
                (tmap'', smap'') <- loadBatiment renderer bat tmap' smap'
@@ -148,7 +148,7 @@ afficherBatiments gameState@(E.Environement joueurs carte unis bats) tmap smap r
 
 
 afficherUnite :: Environement -> TextureMap -> SpriteMap -> Renderer -> IO (TextureMap, SpriteMap)
-afficherUnite gameState@(E.Environement joueurs carte unis bats) tmap smap renderer =
+afficherUnite gameState@(E.Environement joueurs carte unis bats _) tmap smap renderer =
   let uniTuples = Map.toList unis
   in foldM (\(tmap', smap') (_, uni) -> do
                (tmap'', smap'') <- loadUnite renderer uni tmap' smap'
@@ -313,7 +313,7 @@ main = do
   mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines-}
   texteCarte <- (readFile $ "assets/map.txt")
   let (C.Carte vx vy contenuCarte) =  C.createCarte texteCarte
-  let gameState = M.initGameState 2 (C.Carte vx vy contenuCarte)
+  let gameState = M.initGameState 1 (C.Carte vx vy contenuCarte)
   --Map.traverseWithKey (\(C.Coord x y) terrain -> let color = getColorCase terrain in SDLp.fillRectangle renderer (V2 (fromIntegral 200+((fromIntegral x)*50)) (fromIntegral y*50)) (V2 (fromIntegral 250+((fromIntegral x)*53)) (fromIntegral y*61)+50) color) contenuCarte
   
 
@@ -341,7 +341,7 @@ main = do
   
 
   gS <- gameState
-  let (E.Environement joueurs ecarte unites bats)= gS
+  let (E.Environement joueurs ecarte unites bats ennemis)= gS
   Map.traverseWithKey (\iduni uni@(E.Unite c@(C.Coord x y) _ t _ _ _) ->
     let fichier = 
           case t of 
@@ -371,6 +371,15 @@ main = do
       let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
       SDL.copy renderer imageTexture srcRect dstRect
       ) bats
+  
+  mapM_ (\(C.Coord x y) -> do
+          let imagePath = "assets/ennemis.png"  -- Chemin vers votre image
+          imageSurface <- IMG.load imagePath
+          imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+          SDL.freeSurface imageSurface
+          let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
+          SDL.copy renderer imageTexture srcRect dstRect
+      ) ennemis
 
   SDL.present renderer -- Affiche le rendu à l'écran
 
