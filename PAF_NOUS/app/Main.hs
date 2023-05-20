@@ -388,6 +388,8 @@ main = do
   SDL.destroyRenderer renderer -- Détruit le rendu
   SDL.destroyWindow window -- Ferme la fenêtre
   SDL.quit -- Quitte SDL
+  let curent_game = M.initGameState 2
+
 
 -- Boucle principale pour maintenir la fenêtre ouverte
 loop :: IO ()
@@ -397,8 +399,20 @@ loop = do
   let (kbd', mouse) = K.handleEvents events kbd
   let boutonDeplacer= M.GameState 35 75 0
   let boutonRecolter= M.GameState 35 150 0
-  when (M.insideGameState mouse boutonDeplacer)
-    (putStrLn "Deplacer!")
+  when (M.insideGameState mouse boutonDeplacer) $ do
+                            putStrLn "Donner les coordoné  cx"
+                            str_cx <-getLine ; 
+                            putStrLn "Donner les coordoné  cy";
+                            str_cy <-getLine 
+                            let cx = read  str_cx ::Int
+                            let cy = read  str_cy ::Int
+                            let  crd=C.Coord  cx cy 
+                            --recupère les unités  qui corespond aux coordones  (faut changer la liste empty)
+                            let liste_unit= E.cherche_Case_Unite   crd   Map.empty 
+                            --parcours la liste value_unite pour les faire deplacer 
+                            curent_game   <-curent_game_
+                            new_list_environement<- map   (\unt ->E.actionDeplacerUnite curent_game unt  E.Bas ) 
+                            putStrLn "unite moved ";
   
   when (M.insideGameState mouse boutonRecolter)
     (putStrLn "Recolter !")
