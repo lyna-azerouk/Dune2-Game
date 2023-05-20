@@ -20,6 +20,16 @@
   (major1) == 4 && (major2) <  16 || \
   (major1) == 4 && (major2) == 16 && (minor) <= 4)
 #endif /* MIN_VERSION_base */
+/* package cairo-0.13.8.2 */
+#ifndef VERSION_cairo
+#define VERSION_cairo "0.13.8.2"
+#endif /* VERSION_cairo */
+#ifndef MIN_VERSION_cairo
+#define MIN_VERSION_cairo(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  13 || \
+  (major1) == 0 && (major2) == 13 && (minor) <= 8)
+#endif /* MIN_VERSION_cairo */
 /* package containers-0.6.5.1 */
 #ifndef VERSION_containers
 #define VERSION_containers "0.6.5.1"

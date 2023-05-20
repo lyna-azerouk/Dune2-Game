@@ -8,7 +8,7 @@ import Linear.V2 (V2(..))
 import Control.Monad (unless)
 import Control.Concurrent (threadDelay)
 import Foreign.C.Types (CInt)
-import Data.Word (Word8)
+import Data.Word (Word8,Word32)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified SDL.Image as IMG
@@ -301,21 +301,9 @@ main = do
       startOffset = 200 -- Décalage de départ des lignes verticales
   
   SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
-
-   {-- Dessin des lignes verticales
-  let verticalLines = map (\x -> fromIntegral (x + startOffset)) [0, gridSize .. windowWidth]
-  mapM_ (\x -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 x 0)) (V2 lineWidth lineHeight)))) verticalLines
-
-   -- Dessin des lignes horizontales
-  let lineWidth2 = fromIntegral (windowWidth - startOffset)
-      lineHeight2 = 2
-      horizontalLines = map (\y -> fromIntegral y) [0, gridSize .. windowHeight]
-  mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines-}
   texteCarte <- (readFile $ "assets/map.txt")
   let (C.Carte vx vy contenuCarte) =  C.createCarte texteCarte
   let gameState = M.initGameState 1 (C.Carte vx vy contenuCarte)
-  --Map.traverseWithKey (\(C.Coord x y) terrain -> let color = getColorCase terrain in SDLp.fillRectangle renderer (V2 (fromIntegral 200+((fromIntegral x)*50)) (fromIntegral y*50)) (V2 (fromIntegral 250+((fromIntegral x)*53)) (fromIntegral y*61)+50) color) contenuCarte
-  
 
   Map.traverseWithKey (\(C.Coord x y) terrain->
     let fichier = terrainToString terrain
@@ -381,10 +369,10 @@ main = do
           SDL.copy renderer imageTexture srcRect dstRect
       ) ennemis
 
-  SDL.present renderer -- Affiche le rendu à l'écran
-
-  loop -- Boucle principale
-
+  SDL.present renderer
+  clock <- SDL.ticks
+  loop renderer clock gS -- Boucle principale
+   -- Affiche le rendu à l'écran
   SDL.destroyRenderer renderer -- Détruit le rendu
   SDL.destroyWindow window -- Ferme la fenêtre
   SDL.quit -- Quitte SDL
@@ -392,11 +380,168 @@ main = do
 
 
 -- Boucle principale pour maintenir la fenêtre ouverte
-loop :: IO ()
-loop = do
+-- Boucle principale pour maintenir la fenêtre ouverte
+
+
+loop :: Renderer -> Word32 -> Environement -> IO ()
+loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
+  putStrLn "je passe"
+  let (C.Carte cx cy contenuCarte)=ecarte
+  currentTime <- SDL.ticks
+
+  -- Calcul du temps écoulé depuis la dernière mise à jour
+  let deltaTime = fromIntegral (currentTime - prevTime) / 1000.0
+
   events <- SDL.pollEvents -- Récupère les événements
   let kbd = K.createKeyboard
   let (kbd', mouse) = K.handleEvents events kbd
+  -- Draw a rectangle occupying the entire window
+  font <- Font.load "assets/rambaultxboldregular.ttf" 24-- Charge une police de caractères
+  let imageWidth = 45
+      imageHeight = 45
+      imageWidthmap = 55
+      imageHeightmap = 55
+      srcRect = Nothing
+      linePosition= V2 0 0
+      lineSize = V2 200 650
+
+      -- Dessin d'une ligne horizontale
+  let lineWidth = 2 -- Longueur de la ligne
+      lineHeight = 800-- Épaisseur de la ligne
+      startOffset = 200 -- Décalage de départ des lignes verticales
+ -- Dessine la ligne
+  SDLp.fillRectangle renderer linePosition lineSize grayColor
+  --let rectPosition = V2 35 75  -- Position du rectangle (50/2 = 25 pour le centrage)
+      --rectSize = V2 150 135 -- Taille du rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 75)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+  -- Dessine le rectangle
+  --SDLp.fillRectangle renderer rectPosition rectSize rectangleColor
+
+  let rectPosition2= V2 35 150-- Position du rectangle (50/2 = 25 pour le centrage)
+      rectSize2 = V2 150 210 -- Taille du rectangle
+
+  -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 150)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+  let text = "Actions"
+
+    -- Rendu du texte
+  surface <- Font.blended font textColor text -- Rendu du texte sur une surface
+  texture <- SDL.createTextureFromSurface renderer surface -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface -- Libération de la surface
+
+  -- Position du texte
+  let textPosition = V2 45 15 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize = V2 100 50 -- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture Nothing (Just (SDL.Rectangle (SDL.P textPosition) textSize))
+ 
+
+  let text2 = "Déplacer"
+
+    -- Rendu du texte
+  surface2 <- Font.blended font textColor text2 -- Rendu du texte sur une surface
+  texture2 <- SDL.createTextureFromSurface renderer surface2 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface2 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition2 = V2 50 75 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize2 = V2 75 50 -- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture2 Nothing (Just (SDL.Rectangle (SDL.P textPosition2) textSize2))
+
+  let text3 = "Récolter"
+
+    -- Rendu du texte
+  surface3 <- Font.blended font textColor text3 -- Rendu du texte sur une surface
+  texture3 <- SDL.createTextureFromSurface renderer surface3 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface3 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition3 = V2 50 150 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize3 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture3 Nothing (Just (SDL.Rectangle (SDL.P textPosition3) textSize3))
+  
+  
+  let ennemis = (C.Coord 6 12) : enn
+  SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
+  texteCarte <- (readFile $ "assets/map.txt")
+
+  Map.traverseWithKey (\(C.Coord x y) terrain->
+    let fichier = terrainToString terrain
+        imagePath = "assets/" ++ fichier ++ ".png"  -- Chemin vers votre image
+    in do
+      imageSurface <- IMG.load imagePath
+      imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+      SDL.freeSurface imageSurface
+      let dstRect = Just (Rectangle (P (V2 (fromIntegral (200 + x * 50)) (fromIntegral (y * 50)))) (V2 (fromIntegral imageWidthmap) (fromIntegral imageHeightmap)))
+      SDL.copy renderer imageTexture srcRect dstRect
+      ) contenuCarte
+
+  SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
+  -- Dessin des lignes verticales
+  let verticalLines = map (\x -> fromIntegral (x + startOffset)) [0, gridSize .. windowWidth]
+  mapM_ (\x -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 x 0)) (V2 lineWidth lineHeight)))) verticalLines
+
+  -- Dessin des lignes horizontales
+  let lineWidth2 = fromIntegral (windowWidth - startOffset)
+      lineHeight2 = 2
+      horizontalLines = map (\y -> fromIntegral y) [0, gridSize .. windowHeight]
+  mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines
+
+
+  Map.traverseWithKey (\iduni uni@(E.Unite c@(C.Coord x y) _ t _ _ _) ->
+    let fichier = 
+          case t of 
+            E.Combattant -> "unite_soldat"
+            E.Collecteur _ _ -> "unite_collecteur2"
+        imagePath = "assets/" ++ fichier ++ ".png"  -- Chemin vers votre image
+    in do
+      imageSurface <- IMG.load imagePath
+      imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+      SDL.freeSurface imageSurface
+      let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
+      SDL.copy renderer imageTexture srcRect dstRect
+      ) unites
+
+  Map.traverseWithKey (\idbat bat@(E.Batiment c@(C.Coord x y) _ t _ _ _ _) ->
+    let fichier = 
+          case t of 
+            E.QG _ -> "qg"
+            E.Raffinerie _ -> "raffinerie"
+            E.Usine _ _ _ _ -> "usine"
+            E.Centrale _ -> "centrale"
+        imagePath = "assets/" ++ fichier ++ ".bmp"  -- Chemin vers votre image
+    in do
+      imageSurface <- IMG.load imagePath
+      imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+      SDL.freeSurface imageSurface
+      let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
+      SDL.copy renderer imageTexture srcRect dstRect
+      ) bats
+
+  mapM_ (\(C.Coord x y) -> do
+    let imagePath = "assets/ennemis.png"  -- Chemin vers votre image
+    imageSurface <- IMG.load imagePath
+    imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+    SDL.freeSurface imageSurface
+    let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
+    SDL.copy renderer imageTexture srcRect dstRect
+    ) ennemis
+
+  SDL.present renderer -- Affiche le rendu à l'écran
+
   let boutonDeplacer= M.GameState 35 75 0
   let boutonRecolter= M.GameState 35 150 0
   when (M.insideGameState mouse boutonDeplacer) $ do
@@ -413,21 +558,20 @@ loop = do
                             curent_game   <-curent_game_
                             new_list_environement<- map   (\unt ->E.actionDeplacerUnite curent_game unt  E.Bas ) 
                             putStrLn "unite moved ";
-  
-  when (M.insideGameState mouse boutonRecolter)
-    (putStrLn "Recolter !")
-  let quit = any isQuitEvent events
+  -- Clear the renderer
+  {-let quit = any isQuitEvent events
   if quit
     then return ()
-    else loop
+    else loop renderer (i + 1) envi-}
+   -- Vérification de la condition de fin du jeu
+  let quit = any isQuitEvent events
+  unless quit $ loop renderer currentTime envi 
 
--- Vérifie si un événement est un événement de fermeture de la fenêtre
 isQuitEvent :: SDL.Event -> Bool
-isQuitEvent event = case SDL.eventPayload event of
-  SDL.QuitEvent -> True
-  _             -> False
-
-
+isQuitEvent (SDL.Event _ payload) =
+  case payload of
+    SDL.QuitEvent -> True
+    _ -> False
 
 {-main :: IO ()
 main = do
