@@ -44,7 +44,7 @@ moveDown gs@(GameState _ y s)
 insideGameState :: Maybe (V2 Int) -> GameState -> Bool 
 insideGameState coordinates gs@(GameState px py _) = 
   case coordinates of
-    Just (V2 x y) -> px <= x && x <= (px + 100) && py <= y && y <= (py + 78)
+    Just (V2 x y) -> px <= x && x <= (px + 115) && py <= y && y <= (py + 50)
     Nothing -> False
 
 gameStep :: RealFrac a => GameState -> Keyboard -> a -> GameState

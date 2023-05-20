@@ -222,20 +222,36 @@ main = do
   let linePosition= V2 0 0
       lineSize = V2 200 650
 
+  let imageX = 100
+      imageY = 100
+      imageWidth = 45
+      imageHeight = 45
+      imageWidthmap = 55
+      imageHeightmap = 55
+      srcRect = Nothing
+
+  
   -- Dessine la ligne
   SDLp.fillRectangle renderer linePosition lineSize grayColor
-  let rectPosition = V2 35 75  -- Position du rectangle (50/2 = 25 pour le centrage)
-      rectSize = V2 150 135 -- Taille du rectangle
-
+  --let rectPosition = V2 35 75  -- Position du rectangle (50/2 = 25 pour le centrage)
+      --rectSize = V2 150 135 -- Taille du rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 75)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
   -- Dessine le rectangle
-  SDLp.fillRectangle renderer rectPosition rectSize rectangleColor
+  --SDLp.fillRectangle renderer rectPosition rectSize rectangleColor
 
   let rectPosition2= V2 35 150-- Position du rectangle (50/2 = 25 pour le centrage)
       rectSize2 = V2 150 210 -- Taille du rectangle
 
   -- Dessine le rectangle
-  SDLp.fillRectangle renderer rectPosition2 rectSize2 rectangleColor
-
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 150)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
   let text = "Actions"
 
     -- Rendu du texte
@@ -300,13 +316,6 @@ main = do
   let gameState = M.initGameState 2 (C.Carte vx vy contenuCarte)
   --Map.traverseWithKey (\(C.Coord x y) terrain -> let color = getColorCase terrain in SDLp.fillRectangle renderer (V2 (fromIntegral 200+((fromIntegral x)*50)) (fromIntegral y*50)) (V2 (fromIntegral 250+((fromIntegral x)*53)) (fromIntegral y*61)+50) color) contenuCarte
   
-  let imageX = 100
-      imageY = 100
-      imageWidth = 45
-      imageHeight = 45
-      imageWidthmap = 55
-      imageHeightmap = 55
-      srcRect = Nothing -- Utiliser toute la surface de l'image
 
   Map.traverseWithKey (\(C.Coord x y) terrain->
     let fichier = terrainToString terrain
