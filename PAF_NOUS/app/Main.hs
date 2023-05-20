@@ -54,6 +54,8 @@ import qualified SDL.Font as Font
 import qualified SDL.Primitive as SDLPrimitives
 import qualified Data.Text as Text
 import qualified SDL.Video as SDLVideo
+import Carte (Carte)
+import qualified Carte as C
 
 loadBackground :: Renderer-> FilePath -> TextureMap -> SpriteMap -> IO (TextureMap, SpriteMap)
 loadBackground rdr path tmap smap = do
@@ -172,11 +174,27 @@ lineColor = V4 0 255 0 255 -- Vert (RVBA)
 textColor :: V4 Word8
 textColor = V4 0 0 0 255 -- Noir (RVBA)
 
+-- Couleur bleue
+blueColor :: V4 Word8
+blueColor = V4 0 0 255 255 -- Bleu (RVBA)
+
+-- Couleur grise
+grayColor :: V4 Word8
+grayColor = V4 128 128 128 255 -- Gris (RVBA)
+
 gridSize :: Int
 gridSize = 50
 
 gridColor :: SDL.V4 Word8
 gridColor = V4 0 0 0 255 -- Noir opaque
+
+getColorCase::C.Terrain -> SDL.V4 Word8
+getColorCase terrain = 
+  case terrain of
+    C.Herbe -> lineColor
+    C.Eau -> blueColor
+    C.Ressource _ -> grayColor
+
 
 main :: IO ()
 main = do
@@ -194,7 +212,7 @@ main = do
       lineSize = V2 200 650
 
   -- Dessine la ligne
-  SDLp.fillRectangle renderer linePosition lineSize lineColor
+  SDLp.fillRectangle renderer linePosition lineSize grayColor
   let rectPosition = V2 35 75  -- Position du rectangle (50/2 = 25 pour le centrage)
       rectSize = V2 150 135 -- Taille du rectangle
 
@@ -257,7 +275,21 @@ main = do
   
   SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
 
-   -- Dessin des lignes verticales
+   {-- Dessin des lignes verticales
+  let verticalLines = map (\x -> fromIntegral (x + startOffset)) [0, gridSize .. windowWidth]
+  mapM_ (\x -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 x 0)) (V2 lineWidth lineHeight)))) verticalLines
+
+   -- Dessin des lignes horizontales
+  let lineWidth2 = fromIntegral (windowWidth - startOffset)
+      lineHeight2 = 2
+      horizontalLines = map (\y -> fromIntegral y) [0, gridSize .. windowHeight]
+  mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines-}
+  texteCarte <- (readFile $ "assets/map.txt")
+  let (C.Carte vx vy contenuCarte) =  C.createCarte texteCarte
+
+  Map.traverseWithKey (\(C.Coord x y) terrain -> let color = getColorCase terrain in SDLp.fillRectangle renderer (V2 (fromIntegral 200+((fromIntegral x)*50)) (fromIntegral y*50)) (V2 (fromIntegral 250+((fromIntegral x)*53)) (fromIntegral y*61)+50) color) contenuCarte
+  SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
+  -- Dessin des lignes verticales
   let verticalLines = map (\x -> fromIntegral (x + startOffset)) [0, gridSize .. windowWidth]
   mapM_ (\x -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 x 0)) (V2 lineWidth lineHeight)))) verticalLines
 
@@ -266,7 +298,7 @@ main = do
       lineHeight2 = 2
       horizontalLines = map (\y -> fromIntegral y) [0, gridSize .. windowHeight]
   mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines
-
+  
   SDL.present renderer -- Affiche le rendu à l'écran
 
   loop -- Boucle principale
