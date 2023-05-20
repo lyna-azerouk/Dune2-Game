@@ -16,9 +16,8 @@ data GameState = GameState { persoX :: Int
   deriving (Show)
 
 
-initGameState :: Int -> IO Environement
-initGameState nbr = let carte = C.createCarte "HHHHHHHHHHHHHH"
-                        listejoueurs = E.creerJoueur nbr in
+initGameState :: Int -> Carte-> IO Environement
+initGameState nbr carte = let listejoueurs = E.creerJoueur nbr in
                    E.smartConst_env carte listejoueurs
 
 moveLeft :: GameState -> GameState

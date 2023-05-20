@@ -80,6 +80,16 @@
   (major1) == 0 && (major2) <  3 || \
   (major1) == 0 && (major2) == 3 && (minor) <= 0)
 #endif /* MIN_VERSION_sdl2_gfx */
+/* package sdl2-image-2.1.0.0 */
+#ifndef VERSION_sdl2_image
+#define VERSION_sdl2_image "2.1.0.0"
+#endif /* VERSION_sdl2_image */
+#ifndef MIN_VERSION_sdl2_image
+#define MIN_VERSION_sdl2_image(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  1 || \
+  (major1) == 2 && (major2) == 1 && (minor) <= 0)
+#endif /* MIN_VERSION_sdl2_image */
 /* package sdl2-ttf-2.1.3 */
 #ifndef VERSION_sdl2_ttf
 #define VERSION_sdl2_ttf "2.1.3"

@@ -11,6 +11,7 @@ import Foreign.C.Types (CInt)
 import Data.Word (Word8)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified SDL.Image as IMG
 
 import Data.List (foldl')
 import SDL (Renderer, V2(..), Rectangle(..), Texture, createTextureFromSurface, copy, destroyTexture, freeSurface)
@@ -193,8 +194,11 @@ getColorCase terrain =
   case terrain of
     C.Herbe -> lineColor
     C.Eau -> blueColor
-    C.Ressource _ -> grayColor
+    C.Ressource _ -> brownColor
 
+-- Couleur marron
+brownColor :: V4 Word8
+brownColor = V4 255 255 0 255
 
 main :: IO ()
 main = do
@@ -286,7 +290,7 @@ main = do
   mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines-}
   texteCarte <- (readFile $ "assets/map.txt")
   let (C.Carte vx vy contenuCarte) =  C.createCarte texteCarte
-
+  let gameState = M.initGameState 2 (C.Carte vx vy contenuCarte)
   Map.traverseWithKey (\(C.Coord x y) terrain -> let color = getColorCase terrain in SDLp.fillRectangle renderer (V2 (fromIntegral 200+((fromIntegral x)*50)) (fromIntegral y*50)) (V2 (fromIntegral 250+((fromIntegral x)*53)) (fromIntegral y*61)+50) color) contenuCarte
   SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
   -- Dessin des lignes verticales
@@ -299,6 +303,44 @@ main = do
       horizontalLines = map (\y -> fromIntegral y) [0, gridSize .. windowHeight]
   mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines
   
+  let imageX = 100
+      imageY = 100
+      imageWidth = 45
+      imageHeight = 45
+      srcRect = Nothing -- Utiliser toute la surface de l'image
+
+  gS <- gameState
+  let (E.Environement joueurs ecarte unites bats)= gS
+  Map.traverseWithKey (\iduni uni@(E.Unite c@(C.Coord x y) _ t _ _ _) ->
+    let fichier = 
+          case t of 
+            E.Combattant -> "unite_soldat"
+            E.Collecteur _ _ -> "unite_collecteur2"
+        imagePath = "assets/" ++ fichier ++ ".png"  -- Chemin vers votre image
+    in do
+      imageSurface <- IMG.load imagePath
+      imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+      SDL.freeSurface imageSurface
+      let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
+      SDL.copy renderer imageTexture srcRect dstRect
+      ) unites
+
+  Map.traverseWithKey (\idbat bat@(E.Batiment c@(C.Coord x y) _ t _ _ _ _) ->
+    let fichier = 
+          case t of 
+            E.QG _ -> "qg"
+            E.Raffinerie _ -> "raffinerie"
+            E.Usine _ _ _ _ -> "usine"
+            E.Centrale _ -> "centrale"
+        imagePath = "assets/" ++ fichier ++ ".bmp"  -- Chemin vers votre image
+    in do
+      imageSurface <- IMG.load imagePath
+      imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+      SDL.freeSurface imageSurface
+      let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
+      SDL.copy renderer imageTexture srcRect dstRect
+      ) bats
+
   SDL.present renderer -- Affiche le rendu à l'écran
 
   loop -- Boucle principale
