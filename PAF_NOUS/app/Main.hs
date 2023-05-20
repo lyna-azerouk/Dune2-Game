@@ -172,7 +172,7 @@ textColor = V4 0 0 0 255 -- Noir (RVBA)
 main :: IO ()
 main = do
   Font.initialize -- Initialise SDL-ttf
-  window <- SDL.createWindow "SDL Rectangle" SDL.defaultWindow -- Crée une fenêtre
+  window <- SDL.createWindow "Dunes II" SDL.defaultWindow -- Crée une fenêtre
     { SDL.windowInitialSize = V2 (fromIntegral windowWidth) (fromIntegral windowHeight)
     }
 
@@ -186,13 +186,19 @@ main = do
 
   -- Dessine la ligne
   SDLp.fillRectangle renderer linePosition lineSize lineColor
-  let rectPosition = V2 25 25 -- Position du rectangle (50/2 = 25 pour le centrage)
-      rectSize = V2 125 75 -- Taille du rectangle
+  let rectPosition = V2 35 75  -- Position du rectangle (50/2 = 25 pour le centrage)
+      rectSize = V2 150 135 -- Taille du rectangle
 
   -- Dessine le rectangle
   SDLp.fillRectangle renderer rectPosition rectSize rectangleColor
 
-  let text = "Deplacer"
+  let rectPosition2= V2 35 150-- Position du rectangle (50/2 = 25 pour le centrage)
+      rectSize2 = V2 150 210 -- Taille du rectangle
+
+  -- Dessine le rectangle
+  SDLp.fillRectangle renderer rectPosition2 rectSize2 rectangleColor
+
+  let text = "Actions"
 
     -- Rendu du texte
   surface <- Font.blended font textColor text -- Rendu du texte sur une surface
@@ -200,12 +206,41 @@ main = do
   SDL.freeSurface surface -- Libération de la surface
 
   -- Position du texte
-  let textPosition = V2 25 25 -- Position du rectangle (50/2 = 25 pour le centrage)
+  let textPosition = V2 45 15 -- Position du rectangle (50/2 = 25 pour le centrage)
       textSize = V2 100 50 -- Taille du rectangle
 
   -- Affichage du texte
   SDL.copy renderer texture Nothing (Just (SDL.Rectangle (SDL.P textPosition) textSize))
  
+
+  let text2 = "Déplacer"
+
+    -- Rendu du texte
+  surface2 <- Font.blended font textColor text2 -- Rendu du texte sur une surface
+  texture2 <- SDL.createTextureFromSurface renderer surface2 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface2 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition2 = V2 50 75 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize2 = V2 75 50 -- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture2 Nothing (Just (SDL.Rectangle (SDL.P textPosition2) textSize2))
+
+  let text3 = "Récolter"
+
+    -- Rendu du texte
+  surface3 <- Font.blended font textColor text3 -- Rendu du texte sur une surface
+  texture3 <- SDL.createTextureFromSurface renderer surface3 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface3 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition3 = V2 50 150 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize3 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture3 Nothing (Just (SDL.Rectangle (SDL.P textPosition3) textSize3))
+
   SDL.present renderer -- Affiche le rendu à l'écran
 
   loop -- Boucle principale
@@ -218,6 +253,15 @@ main = do
 loop :: IO ()
 loop = do
   events <- SDL.pollEvents -- Récupère les événements
+  let kbd = K.createKeyboard
+  let (kbd', mouse) = K.handleEvents events kbd
+  let boutonDeplacer= M.GameState 35 75 0
+  let boutonRecolter= M.GameState 35 150 0
+  when (M.insideGameState mouse boutonDeplacer)
+    (putStrLn "Deplacer!")
+  
+  when (M.insideGameState mouse boutonRecolter)
+    (putStrLn "Recolter !")
   let quit = any isQuitEvent events
   if quit
     then return ()
