@@ -264,6 +264,26 @@ main = do
   let dstRect = Just (Rectangle (P (V2 35 225)) (V2 115 50))
   SDL.copy renderer imageTexture srcRect dstRect
 
+   -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 225)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+
+   -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 300)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+   -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 375)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+
   let text = "Actions"
 
     -- Rendu du texte
@@ -279,7 +299,7 @@ main = do
   SDL.copy renderer texture Nothing (Just (SDL.Rectangle (SDL.P textPosition) textSize))
  
 
-  let text2 = "Déplacer"
+  let text2 = "Récolter"
 
     -- Rendu du texte
   surface2 <- Font.blended font textColor text2 -- Rendu du texte sur une surface
@@ -317,6 +337,39 @@ main = do
   -- Position du texte
   let textPosition4 = V2 50 225 -- Position du rectangle (50/2 = 25 pour le centrage)
       textSize4 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
+
+  let text4 = "Action Unite"
+
+    -- Rendu du texte
+  surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
+  texture4 <- SDL.createTextureFromSurface renderer surface4 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface4 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition4 = V2 50 300 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize4 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
+
+  let text4 = "Donner Ordre Unite"
+
+    -- Rendu du texte
+  surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
+  texture4 <- SDL.createTextureFromSurface renderer surface4 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface4 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition4 = V2 50 375 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize4 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
+
+  
 
   -- Affichage du texte
   SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
@@ -404,13 +457,8 @@ main = do
   SDL.quit -- Quitte SDL
 
 
--- Boucle principale pour maintenir la fenêtre ouverte
--- Boucle principale pour maintenir la fenêtre ouverte
-
-
 loop :: Renderer -> Word32 -> Environement -> IO ()
 loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
-  putStrLn "je passe"
   let (C.Carte cx cy contenuCarte)=ecarte
   currentTime <- SDL.ticks
 
@@ -463,6 +511,26 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   let dstRect = Just (Rectangle (P (V2 35 225)) (V2 115 50))
   SDL.copy renderer imageTexture srcRect dstRect
 
+   -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 225)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+
+   -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 300)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+   -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 375)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+
   let text = "Actions"
 
     -- Rendu du texte
@@ -478,7 +546,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   SDL.copy renderer texture Nothing (Just (SDL.Rectangle (SDL.P textPosition) textSize))
  
 
-  let text2 = "Déplacer"
+  let text2 = "Récolter"
 
     -- Rendu du texte
   surface2 <- Font.blended font textColor text2 -- Rendu du texte sur une surface
@@ -519,15 +587,43 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
 
   -- Affichage du texte
   SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
+  let text4 = "Action Unite"
+
+    -- Rendu du texte
+  surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
+  texture4 <- SDL.createTextureFromSurface renderer surface4 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface4 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition4 = V2 50 300 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize4 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
+
+  let text4 = "Donner Ordre Unite"
+
+    -- Rendu du texte
+  surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
+  texture4 <- SDL.createTextureFromSurface renderer surface4 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface4 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition4 = V2 50 375 
+      textSize4 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
 
   
+  
   let ennemis = (C.Coord 6 12) : enn
-  SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
+  SDL.rendererDrawColor renderer SDL.$= textColor 
   texteCarte <- (readFile $ "assets/map.txt")
 
   Map.traverseWithKey (\(C.Coord x y) terrain->
     let fichier = terrainToString terrain
-        imagePath = "assets/" ++ fichier ++ ".png"  -- Chemin vers votre image
+        imagePath = "assets/" ++ fichier ++ ".png"  
     in do
       imageSurface <- IMG.load imagePath
       imageTexture <- SDL.createTextureFromSurface renderer imageSurface
@@ -553,7 +649,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
           case t of 
             E.Combattant -> "unite_soldat"
             E.Collecteur _ _ -> "unite_collecteur2"
-        imagePath = "assets/" ++ fichier ++ ".png"  -- Chemin vers votre image
+        imagePath = "assets/" ++ fichier ++ ".png" 
     in do
       imageSurface <- IMG.load imagePath
       imageTexture <- SDL.createTextureFromSurface renderer imageSurface
@@ -569,7 +665,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
             E.Raffinerie _ -> "raffinerie"
             E.Usine _ _ _ _ -> "usine"
             E.Centrale _ -> "centrale"
-        imagePath = "assets/" ++ fichier ++ ".bmp"  -- Chemin vers votre image
+        imagePath = "assets/" ++ fichier ++ ".bmp"  
     in do
       imageSurface <- IMG.load imagePath
       imageTexture <- SDL.createTextureFromSurface renderer imageSurface
@@ -579,7 +675,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
       ) bats
 
   mapM_ (\(C.Coord x y) -> do
-    let imagePath = "assets/ennemis.png"  -- Chemin vers votre image
+    let imagePath = "assets/ennemis.png"  
     imageSurface <- IMG.load imagePath
     imageTexture <- SDL.createTextureFromSurface renderer imageSurface
     SDL.freeSurface imageSurface
@@ -589,23 +685,14 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
 
   SDL.present renderer -- Affiche le rendu à l'écran
 
-  let boutonDeplacer= M.GameState 35 75 0
+  let boutonRecolter= M.GameState 35 75 0
   let boutonCreerBat= M.GameState 35 150 0
   let boutonCreerUni= M.GameState 35 225 0
-  when (M.insideGameState mouse boutonDeplacer) $ do
-                            putStrLn "Donner les coordoné  cx"
-                            str_cx <-getLine ; 
-                            putStrLn "Donner les coordoné  cy";
-                            str_cy <-getLine 
-                            let cx = read  str_cx ::Int
-                            let cy = read  str_cy ::Int
-                            let  crd=C.Coord  cx cy 
-                            --recupère les unités  qui corespond aux coordones  (faut changer la liste empty)
-                            let liste_unit= E.cherche_Case_Unite   crd   Map.empty 
-                            --parcours la liste value_unite pour les faire deplacer 
-                           -- curent_game   <-curent_game_
-                           -- new_list_environement<- map   (\unt ->E.actionDeplacerUnite curent_game unt  E.Bas )
-                            putStrLn "unite moved ";
+  let boutonActionUnite= M.GameState 35 300 0
+  let boutonDonnerOrdre= M.GameState 35 375 0
+
+  when (M.insideGameState mouse boutonRecolter) $ do
+    putStrLn "Récolté";
   
   when (M.insideGameState mouse boutonCreerBat) $ do
     let idglobal = 9
@@ -648,14 +735,14 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
         j = case E.takeFirstPlayer joueurs of 
             Just jou -> jou
             Nothing -> error ("pas de joueurs")
-    putStrLn "nommer le batiment : 1 - collecteur, 2 - combattant"
+    putStrLn "nommer l'unité: 1 - collecteur, 2 - combattant"
     type_num<- getLine
     let typeBat = case readMaybe type_num :: Maybe Int of
                     Just val -> case val of 
                                 1 -> "collecteur"
                                 2 -> "combattant"
-                                _-> error "Num type de bâtiment invalide"
-                    Nothing -> error "Type de bâtiment invalide"
+                                _-> error "Num type d'unité' invalide"
+                    Nothing -> error "Type d'unité invalide"
         prixbat = 10
         pvbat = 10
     putStrLn "Donner les coordonnées sur l'axe x"
@@ -671,16 +758,16 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
         c = C.Coord cx cy 
     let (val, newenvi) = E.creerUnite j typeBat envi c idglobal prixbat pvbat
     print newenvi
-    putStrLn "Batiment crée!"
+    putStrLn "Unité créee!"
     let quit = any isQuitEvent events
     loop renderer currentTime newenvi
 
-  -- Clear the renderer
-  {-let quit = any isQuitEvent events
-  if quit
-    then return ()
-    else loop renderer (i + 1) envi-}
-   -- Vérification de la condition de fin du jeu
+  when (M.insideGameState mouse boutonActionUnite) $ do
+     putStrLn "Action Unite!"
+  when (M.insideGameState mouse boutonDonnerOrdre) $ do
+     putStrLn "Ordre unité donné!"
+
+
   let quit = any isQuitEvent events
   unless quit $ loop renderer currentTime envi
 
@@ -690,50 +777,3 @@ isQuitEvent (SDL.Event _ payload) =
     SDL.QuitEvent -> True
     _ -> False
 
-{-main :: IO ()
-main = do
-  initializeAll
-  window <- createWindow "Minijeu" $ defaultWindow { windowInitialSize = V2 640 480 }
-  renderer <- createRenderer window (-1) defaultRenderer
-  -- chargement de l'image du fond
-  --(tmap, smap) <- loadBackground renderer "assets/background.bmp" TM.createTextureMap SM.createSpriteMap
-  -- chargement du personnage
-  --(tmap', smap') <- loadPerso renderer "assets/perso.bmp" tmap smap
-  -- initialisation de l'état du jeu
-  let gameState = M.initGameState 2
-  -- initialisation de l'état du clavier
-  let kbd = K.createKeyboard
-  -- lancement de la gameLoop
-  (tmap', smap') <- gameState >>= \gameState' ->
-                  afficherBatiments gameState'  TM.createTextureMap SM.createSpriteMap renderer
-
-  -- (tmap''',smap''')<- afficherUnite gameState tmap'' smap'' renderer
-  gameLoop 60 renderer tmap' smap' kbd gameState
-
-gameLoop :: (RealFrac a, Show a) => a -> Renderer -> TextureMap -> SpriteMap -> Keyboard -> IO Environement -> IO ()
-gameLoop frameRate renderer tmap smap kbd gameState = do
-  startTime <- time
-  events <- pollEvents
-  let (kbd', mouse) = K.handleEvents events kbd
-  clear renderer
-  --- display background
-  S.displaySprite renderer tmap (SM.fetchSprite (SpriteId "background") smap)
-  ---
-  present renderer
-  endTime <- time
-  let refreshTime = endTime - startTime
-  let delayTime = floor (((1.0 / frameRate) - refreshTime) * 1000)
-  threadDelay $ delayTime * 1000 -- microseconds
-  endTime <- time
-  let deltaTime = endTime - startTime
-  -- putStrLn $ "Delta time: " <> (show (deltaTime * 1000)) <> " (ms)"
-  -- putStrLn $ "Frame rate: " <> (show (1 / deltaTime)) <> " (frame/s)"
-  
-  --- update du game state
-
-
-  unless (K.keypressed KeycodeEscape kbd') 
-    (gameLoop frameRate renderer tmap smap kbd' gameState
-      )
-  
--- (gameLoop frameRate renderer tmap smap kbd' gameState')-}
