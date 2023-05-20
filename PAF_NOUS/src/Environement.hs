@@ -42,9 +42,9 @@ instance Ord BatId where
 
 data TypeBatiment = QG Int -- Int = energie_prod
     | Raffinerie Int -- Int = energie_conso
-    | Usine Int Unite Int String-- Int = energie_conso , Unite = unite produite et Int = temps de production
+    | Usine Int TypeUnite Int String-- Int = energie_conso , Unite = unite produite et Int = temps de production
     | Centrale Int -- Int = energie_prod
-
+    deriving (Show)
 
 data Batiment = Batiment{
     coordb::Coord,
@@ -54,7 +54,7 @@ data Batiment = Batiment{
     pvb::Int, -- pv si 0 => destruction 
     prixb::Int, -- coût du bâtiment en crédits
     utilisable::Bool
-}
+}deriving (Show)
 
 bcoord :: Batiment -> Coord
 bcoord batiment@(Batiment coordb _ _ _ _ _ _) = coordb
@@ -82,11 +82,23 @@ btype batiment@(Batiment _ _ typeb _ _ _ _)= case typeb of
 btinitialisation:: String -> Maybe TypeBatiment
 btinitialisation typeb= case typeb of
     "raffinerie" -> Just (Raffinerie 10)
-    --"usine" -> Usine 10 Unite 0
+    "usine" -> Just (Usine 10 Combattant 0 "vide")
     "centrale" -> Just (Centrale 15)
     _-> Nothing
 
-newtype UniteId = UniteId Int 
+uniinitialisation:: String -> Maybe TypeUnite
+uniinitialisation typeb= case typeb of
+    "combattant" -> Just Combattant 
+    "collecteur" -> Just (Collecteur 0 4)
+    _-> Nothing
+
+getPrixBat:: String -> Maybe Int
+getPrixBat typeb= case typeb of
+    "raffinerie" -> Just 10
+    "usine" -> Just 15
+    "centrale" -> Just 15
+    _-> Nothing
+newtype UniteId = UniteId Int  deriving (Show)
 instance Eq UniteId where
     (UniteId a) == (UniteId b) = a == b
 
@@ -114,7 +126,7 @@ data Unite = Unite{
     idu::UniteId,
     pvu::Int, -- pv si 0 => destruction 
     ordres::TypeOrdres
-}
+}deriving (Show)
 
 instance Eq Unite where 
     (Unite c1 p1 t1 i1 pv1 or1) == (Unite c2 p2 t2 i2 pv2 or2)= (c1==c2) && (p1==p2) && (t1==t2) && (i1==i2) && (pv1==pv2) && (or1==or2)
@@ -149,7 +161,10 @@ data Environement= Environement{
     unites:: M.Map UniteId Unite,
     batiments:: M.Map BatId Batiment,
     ennemis::[Coord]
-}
+} deriving (Show)
+takeFirstPlayer :: [Joueur] -> Maybe Joueur
+takeFirstPlayer [] = Nothing
+takeFirstPlayer (joueur:_) = Just joueur
 
 chercheJoueur :: [Joueur] -> JoueurId -> Maybe Joueur
 chercheJoueur [] _ = Nothing
@@ -252,7 +267,8 @@ smartConst_env carte listejoueurs = do
                                              , typeb = QG 15
                                              , idb = BatId ns
                                              , pvb = 30
-                                             , prixb = 0 }  
+                                             , prixb = 0 
+                                             , utilisable = True}  
                           return (bat:bats, ns+1, coord:cs)) ([], 1, coords) listejoueurs
   listeEnnemis <- creerListeEnnemis carte coords
   return $ Environement { joueurs = listejoueurs
@@ -297,10 +313,28 @@ creerBatiment j typeBat env@(Environement _ _ _ bats _) c idglobal prixbat pvbat
                                , typeb = tnew
                                , idb = BatId idglobal
                                , pvb = pvbat
-                               , prixb = prixbat }
+                               , prixb = prixbat
+                               , utilisable =True}
                 newBats = M.insert (BatId idglobal) bat bats
                 newEnv = env { batiments = newBats }
             in (True, newEnv)
+
+creerUnite:: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
+creerUnite j typeUni env@(Environement _ _ unis _ _) c idglobal prixuni pvuni =
+    let t = uniinitialisation typeUni in 
+    case t of 
+        Nothing -> (False, env)
+        Just tnew ->
+            let uni = Unite { coordu= c
+                                ,propriou=jid j,
+                                typeu= tnew,
+                                idu=UniteId idglobal,
+                                pvu=pvuni, -- pv si 0 => destruction 
+                                ordres= Pause}
+                newunis = M.insert (UniteId idglobal) uni unis
+                newEnv = env {unites = newunis}
+            in (True, newEnv)
+
 
 prop_pre_creerBatiment1::Environement-> Coord->Bool
 prop_pre_creerBatiment1 env@(Environement _ carte _ _ _) coord = let t = getCase coord carte in 
@@ -453,7 +487,7 @@ verificationDestruction env@(Environement joueurs carte unis bats enns) =
 --prop_post_verificationDestruction
 --invariant_verificationDestruction -> pas d'idée
 
-actionUsine::Batiment->Joueur->Unite->Batiment
+actionUsine::Batiment->Joueur->TypeUnite->Batiment
 actionUsine bat@(Batiment _ _ (Usine n u temp _) _ _ _ _) joueur unite = bat{typeb=Usine n unite temp "en cours"}
 
 prop_pre_actionUsine1::Batiment->Joueur->Bool --verifier que c est une usine et qu elle appartient à joueur
@@ -473,7 +507,7 @@ prop_post_actionUsine bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=False
 invariant_actionUsine ::Batiment->Batiment-> Bool --n et temps identique
 invariant_actionUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
 
-recupUsine :: Batiment -> Joueur -> Unite
+recupUsine :: Batiment -> Joueur -> TypeUnite
 recupUsine bat@(Batiment _ _ (Usine n u temp _) _ _ _ _) joueur =
     let newBat = bat { typeb = Usine n u temp "vide" }
     in u

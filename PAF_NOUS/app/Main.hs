@@ -12,6 +12,7 @@ import Data.Word (Word8,Word32)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified SDL.Image as IMG
+import Text.Read (readMaybe)
 
 import Data.List (foldl')
 import SDL (Renderer, V2(..), Rectangle(..), Texture, createTextureFromSurface, copy, destroyTexture, freeSurface)
@@ -215,7 +216,7 @@ main = do
     }
 
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer -- Crée un rendu pour la fenêtre
-  font <- Font.load "assets/rambaultxboldregular.ttf" 24-- Charge une police de caractères
+  font <- Font.load "assets/rambaultxboldregular.ttf" 50-- Charge une police de caractères
 
   SDL.rendererDrawColor renderer SDL.$= V4 255 255 255 255 -- Définit la couleur de fond du rendu (blanc)
   SDL.clear renderer -- Efface le rendu avec la couleur de fond
@@ -252,6 +253,17 @@ main = do
   SDL.freeSurface imageSurface
   let dstRect = Just (Rectangle (P (V2 35 150)) (V2 115 50))
   SDL.copy renderer imageTexture srcRect dstRect
+
+  let rectPosition3= V2 35 150-- Position du rectangle (50/2 = 25 pour le centrage)
+      rectSize2 = V2 150 210 -- Taille du rectangle
+
+  -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 225)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+
   let text = "Actions"
 
     -- Rendu du texte
@@ -281,7 +293,7 @@ main = do
   -- Affichage du texte
   SDL.copy renderer texture2 Nothing (Just (SDL.Rectangle (SDL.P textPosition2) textSize2))
 
-  let text3 = "Récolter"
+  let text3 = "Créer Bâtiment"
 
     -- Rendu du texte
   surface3 <- Font.blended font textColor text3 -- Rendu du texte sur une surface
@@ -294,6 +306,20 @@ main = do
 
   -- Affichage du texte
   SDL.copy renderer texture3 Nothing (Just (SDL.Rectangle (SDL.P textPosition3) textSize3))
+
+  let text4 = "Créer Unite"
+
+    -- Rendu du texte
+  surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
+  texture4 <- SDL.createTextureFromSurface renderer surface4 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface4 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition4 = V2 50 225 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize4 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
 
   -- Dessin d'une ligne horizontale
   let lineWidth = 2 -- Longueur de la ligne
@@ -376,7 +402,6 @@ main = do
   SDL.destroyRenderer renderer -- Détruit le rendu
   SDL.destroyWindow window -- Ferme la fenêtre
   SDL.quit -- Quitte SDL
-  let curent_game = M.initGameState 2
 
 
 -- Boucle principale pour maintenir la fenêtre ouverte
@@ -396,7 +421,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   let kbd = K.createKeyboard
   let (kbd', mouse) = K.handleEvents events kbd
   -- Draw a rectangle occupying the entire window
-  font <- Font.load "assets/rambaultxboldregular.ttf" 24-- Charge une police de caractères
+  font <- Font.load "assets/rambaultxboldregular.ttf" 50-- Charge une police de caractères
   let imageWidth = 45
       imageHeight = 45
       imageWidthmap = 55
@@ -430,6 +455,14 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   SDL.freeSurface imageSurface
   let dstRect = Just (Rectangle (P (V2 35 150)) (V2 115 50))
   SDL.copy renderer imageTexture srcRect dstRect
+
+  -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 225)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
+
   let text = "Actions"
 
     -- Rendu du texte
@@ -459,7 +492,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   -- Affichage du texte
   SDL.copy renderer texture2 Nothing (Just (SDL.Rectangle (SDL.P textPosition2) textSize2))
 
-  let text3 = "Récolter"
+  let text3 = "Créer Batiment"
 
     -- Rendu du texte
   surface3 <- Font.blended font textColor text3 -- Rendu du texte sur une surface
@@ -473,6 +506,20 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   -- Affichage du texte
   SDL.copy renderer texture3 Nothing (Just (SDL.Rectangle (SDL.P textPosition3) textSize3))
   
+  let text4 = "Créer Unite"
+
+    -- Rendu du texte
+  surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
+  texture4 <- SDL.createTextureFromSurface renderer surface4 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface4 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition4 = V2 50 225 -- Position du rectangle (50/2 = 25 pour le centrage)
+      textSize4 = V2 75 50-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
+
   
   let ennemis = (C.Coord 6 12) : enn
   SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
@@ -543,7 +590,8 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   SDL.present renderer -- Affiche le rendu à l'écran
 
   let boutonDeplacer= M.GameState 35 75 0
-  let boutonRecolter= M.GameState 35 150 0
+  let boutonCreerBat= M.GameState 35 150 0
+  let boutonCreerUni= M.GameState 35 225 0
   when (M.insideGameState mouse boutonDeplacer) $ do
                             putStrLn "Donner les coordoné  cx"
                             str_cx <-getLine ; 
@@ -555,9 +603,78 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
                             --recupère les unités  qui corespond aux coordones  (faut changer la liste empty)
                             let liste_unit= E.cherche_Case_Unite   crd   Map.empty 
                             --parcours la liste value_unite pour les faire deplacer 
-                            curent_game   <-curent_game_
-                            new_list_environement<- map   (\unt ->E.actionDeplacerUnite curent_game unt  E.Bas ) 
+                           -- curent_game   <-curent_game_
+                           -- new_list_environement<- map   (\unt ->E.actionDeplacerUnite curent_game unt  E.Bas )
                             putStrLn "unite moved ";
+  
+  when (M.insideGameState mouse boutonCreerBat) $ do
+    let idglobal = 9
+        j = case E.takeFirstPlayer joueurs of 
+            Just jou -> jou
+            Nothing -> error ("pas de joueurs")
+    putStrLn "nommer le batiment : 1 - raffinerie, 2 - usine ou 3 - centrale"
+    type_num<- getLine
+    let typeBat = case readMaybe type_num :: Maybe Int of
+                    Just val -> case val of 
+                                1 -> "raffinerie"
+                                2 -> "usine"
+                                3 -> "centrale"
+                                _-> error "Num type de bâtiment invalide"
+                    Nothing -> error "Type de bâtiment invalide"
+        prixbat = case E.getPrixBat typeBat of
+                    Just pb -> pb
+                    Nothing -> error ("pas de prix")
+        pvbat = 20
+    putStrLn "Donner les coordonnées sur l'axe x"
+    str_cx <- getLine
+    putStrLn "Donner les coordonnées sur l'axe y"
+    str_cy <- getLine 
+    let cx = case readMaybe str_cx :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée x invalide")
+        cy = case readMaybe str_cy :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée y invalide")
+        c = C.Coord cx cy 
+    let (val, newenvi) = E.creerBatiment j typeBat envi c idglobal prixbat pvbat
+    print newenvi
+    putStrLn "Batiment crée!"
+    let quit = any isQuitEvent events
+    loop renderer currentTime newenvi
+
+
+  when (M.insideGameState mouse boutonCreerUni) $ do
+    let idglobal = 9
+        j = case E.takeFirstPlayer joueurs of 
+            Just jou -> jou
+            Nothing -> error ("pas de joueurs")
+    putStrLn "nommer le batiment : 1 - collecteur, 2 - combattant"
+    type_num<- getLine
+    let typeBat = case readMaybe type_num :: Maybe Int of
+                    Just val -> case val of 
+                                1 -> "collecteur"
+                                2 -> "combattant"
+                                _-> error "Num type de bâtiment invalide"
+                    Nothing -> error "Type de bâtiment invalide"
+        prixbat = 10
+        pvbat = 10
+    putStrLn "Donner les coordonnées sur l'axe x"
+    str_cx <- getLine
+    putStrLn "Donner les coordonnées sur l'axe y"
+    str_cy <- getLine 
+    let cx = case readMaybe str_cx :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée x invalide")
+        cy = case readMaybe str_cy :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée y invalide")
+        c = C.Coord cx cy 
+    let (val, newenvi) = E.creerUnite j typeBat envi c idglobal prixbat pvbat
+    print newenvi
+    putStrLn "Batiment crée!"
+    let quit = any isQuitEvent events
+    loop renderer currentTime newenvi
+
   -- Clear the renderer
   {-let quit = any isQuitEvent events
   if quit
@@ -565,7 +682,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
     else loop renderer (i + 1) envi-}
    -- Vérification de la condition de fin du jeu
   let quit = any isQuitEvent events
-  unless quit $ loop renderer currentTime envi 
+  unless quit $ loop renderer currentTime envi
 
 isQuitEvent :: SDL.Event -> Bool
 isQuitEvent (SDL.Event _ payload) =
