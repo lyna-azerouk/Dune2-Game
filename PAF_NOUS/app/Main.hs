@@ -196,6 +196,13 @@ getColorCase terrain =
     C.Eau -> blueColor
     C.Ressource _ -> brownColor
 
+terrainToString::C.Terrain -> String
+terrainToString terrain = 
+  case terrain of
+    C.Herbe -> "Herbe"
+    C.Eau -> "Eau"
+    C.Ressource _ -> "Ressource"
+    
 -- Couleur marron
 brownColor :: V4 Word8
 brownColor = V4 255 255 0 255
@@ -291,7 +298,27 @@ main = do
   texteCarte <- (readFile $ "assets/map.txt")
   let (C.Carte vx vy contenuCarte) =  C.createCarte texteCarte
   let gameState = M.initGameState 2 (C.Carte vx vy contenuCarte)
-  Map.traverseWithKey (\(C.Coord x y) terrain -> let color = getColorCase terrain in SDLp.fillRectangle renderer (V2 (fromIntegral 200+((fromIntegral x)*50)) (fromIntegral y*50)) (V2 (fromIntegral 250+((fromIntegral x)*53)) (fromIntegral y*61)+50) color) contenuCarte
+  --Map.traverseWithKey (\(C.Coord x y) terrain -> let color = getColorCase terrain in SDLp.fillRectangle renderer (V2 (fromIntegral 200+((fromIntegral x)*50)) (fromIntegral y*50)) (V2 (fromIntegral 250+((fromIntegral x)*53)) (fromIntegral y*61)+50) color) contenuCarte
+  
+  let imageX = 100
+      imageY = 100
+      imageWidth = 45
+      imageHeight = 45
+      imageWidthmap = 55
+      imageHeightmap = 55
+      srcRect = Nothing -- Utiliser toute la surface de l'image
+
+  Map.traverseWithKey (\(C.Coord x y) terrain->
+    let fichier = terrainToString terrain
+        imagePath = "assets/" ++ fichier ++ ".png"  -- Chemin vers votre image
+    in do
+      imageSurface <- IMG.load imagePath
+      imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+      SDL.freeSurface imageSurface
+      let dstRect = Just (Rectangle (P (V2 (fromIntegral (200 + x * 50)) (fromIntegral (y * 50)))) (V2 (fromIntegral imageWidthmap) (fromIntegral imageHeightmap)))
+      SDL.copy renderer imageTexture srcRect dstRect
+      ) contenuCarte
+  
   SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
   -- Dessin des lignes verticales
   let verticalLines = map (\x -> fromIntegral (x + startOffset)) [0, gridSize .. windowWidth]
@@ -303,11 +330,6 @@ main = do
       horizontalLines = map (\y -> fromIntegral y) [0, gridSize .. windowHeight]
   mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (P (V2 (fromIntegral startOffset) y)) (V2 lineWidth2 lineHeight2)))) horizontalLines
   
-  let imageX = 100
-      imageY = 100
-      imageWidth = 45
-      imageHeight = 45
-      srcRect = Nothing -- Utiliser toute la surface de l'image
 
   gS <- gameState
   let (E.Environement joueurs ecarte unites bats)= gS
