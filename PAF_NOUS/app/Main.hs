@@ -95,6 +95,9 @@ getSpriteIdForBatiment batid =
     E.Usine _ _ _ _ -> (SpriteId "usine")
     E.Centrale _ -> (SpriteId "centrale")
 
+
+--afficherCase::Carte->
+
 loadBatiment:: Renderer -> E.Batiment ->TextureMap -> SpriteMap-> IO (TextureMap,SpriteMap)
 loadBatiment renderer batiment tmap smap = do 
   tmap' <- TM.loadTexture renderer (getFilePathForBatiment (E.typeb batiment)) (getTextureIdForBatiment (E.typeb batiment)) tmap
@@ -169,6 +172,12 @@ lineColor = V4 0 255 0 255 -- Vert (RVBA)
 textColor :: V4 Word8
 textColor = V4 0 0 0 255 -- Noir (RVBA)
 
+gridSize :: Int
+gridSize = 50
+
+gridColor :: SDL.V4 Word8
+gridColor = V4 0 0 0 255 -- Noir opaque
+
 main :: IO ()
 main = do
   Font.initialize -- Initialise SDL-ttf
@@ -240,6 +249,20 @@ main = do
 
   -- Affichage du texte
   SDL.copy renderer texture3 Nothing (Just (SDL.Rectangle (SDL.P textPosition3) textSize3))
+
+  -- Dessin d'une ligne horizontale
+  let lineWidth = 200 -- Longueur de la ligne
+      lineHeight = 2 -- Épaisseur de la ligne
+  
+  SDL.rendererDrawColor renderer SDL.$= textColor -- Couleur de la ligne
+
+   -- Dessin des lignes verticales
+  let verticalLines = map fromIntegral [0, gridSize .. windowWidth]
+  mapM_ (\x -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 x 0)) (V2 lineWidth lineHeight)))) verticalLines
+
+  -- Dessin des lignes horizontales
+  let horizontalLines = map fromIntegral [0, gridSize .. windowHeight]
+  mapM_ (\y -> SDL.fillRect renderer (Just (SDL.Rectangle (SDL.P (V2 0 y)) (V2 lineWidth lineHeight)))) horizontalLines
 
   SDL.present renderer -- Affiche le rendu à l'écran
 
