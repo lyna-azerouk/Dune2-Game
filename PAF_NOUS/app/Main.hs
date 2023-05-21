@@ -369,11 +369,6 @@ main = do
   -- Affichage du texte
   SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
 
-  
-
-  -- Affichage du texte
-  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
-
   -- Dessin d'une ligne horizontale
   let lineWidth = 2 -- Longueur de la ligne
       lineHeight = 800-- Épaisseur de la ligne
@@ -744,7 +739,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
                                 _-> error "Num type d'unité' invalide"
                     Nothing -> error "Type d'unité invalide"
         prixbat = 10
-        pvbat = 10
+        pvbat = 5
     putStrLn "Donner les coordonnées sur l'axe x"
     str_cx <- getLine
     putStrLn "Donner les coordonnées sur l'axe y"
@@ -779,10 +774,12 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
         []-> error ("pas d'unité à ces coordonnées !")
         u1:[]-> do
                 let newenvi = E.etape envi u1
-                print newenvi
+                    finalenvi = E.mouvemenEnnemis newenvi
+                    finalenvi2 = E.mortUniteBat finalenvi
+                print finalenvi2
                 putStrLn "Action Unite!"
                 let quit = any isQuitEvent events
-                loop renderer currentTime newenvi
+                loop renderer currentTime finalenvi2
         _ ->error ("trop d'unité à ces coordonnées !")
 
   when (M.insideGameState mouse boutonDonnerOrdre) $ do

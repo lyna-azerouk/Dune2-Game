@@ -686,8 +686,7 @@ trouver_ennemis unis coord joueur =
     map snd $ filter (\(_, bat) -> rafCoordJoueur bat joueur) (M.toList unis)
   where
     rafCoordJoueur (Unite c p _ _ _ _) j= p /= j && (situer_A_une_Case coord c)
-
-
+    
 bonOrdreType::TypeUnite -> TypeOrdres -> Bool
 bonOrdreType tuni tor = 
     case tuni of 
@@ -757,7 +756,60 @@ modifCoordRaf env@(Environement joueurs carte@(Carte l h contenu) unis bats enns
                     Just fc -> fc
                     Nothing -> error ("pas de coordonné") in 
     getCoordonneesVoisines coordraf carte unis bats enns
--- il y aura plus tard un pb car on déplace l'unité aux coord de la raffinerie mais vu qu'il y a un batiment l'unité ne va pas aller dessus
+
+
+getCoordonneesAttaquerUnite :: Coord -> Carte -> M.Map UniteId Unite -> Maybe Coord
+getCoordonneesAttaquerUnite c@(Coord x y) carte@(Carte xmax ymax contenu) unis =
+    let voisins = [(Coord (x - 1) y), (Coord (x + 1) y), (Coord x (y - 1)), (Coord x (y + 1))]
+    in case filter (\c1@(Coord x1 y1) -> case cherche_Case_Unite c1 unis of 
+                                            u1:_ -> True
+                                            _ -> False) voisins of
+        u1:_ -> Just u1
+        _ -> Nothing
+
+getCoordonneesAttaquerBatiment :: Coord -> Carte -> M.Map BatId Batiment -> Maybe Coord
+getCoordonneesAttaquerBatiment c@(Coord x y) carte@(Carte xmax ymax contenu) bats =
+    let voisins = [(Coord (x - 1) y), (Coord (x + 1) y), (Coord x (y - 1)), (Coord x (y + 1))]
+    in case filter (\c1@(Coord x1 y1) -> case cherche_Case_Batiment c1 bats of
+                                            b1:_ -> True
+                                            _ -> False) voisins of
+        b1:_ -> Just b1
+        _ -> Nothing
+
+
+getUniteCoord:: M.Map UniteId Unite -> Coord -> Maybe Unite
+getUniteCoord unites c = 
+    let liste = filter (\uni@(Unite cu pu tu idu pvu ordresu) -> c==cu ) (M.elems unites) in
+        case liste of
+            u1:reste -> Just u1
+            _ -> Nothing
+
+getBatCoord:: M.Map BatId Batiment-> Coord -> Maybe Batiment
+getBatCoord batiments c = 
+    let liste = filter (\elem@(Batiment cb pb tb idb pvb prixb utilisable) -> c==cb ) (M.elems batiments) in
+        case liste of
+            u1:reste -> Just u1
+            _ -> Nothing
+
+mouvemenEnnemis::Environement -> Environement
+mouvemenEnnemis env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) = 
+    foldl (\acc c1-> let uni = getCoordonneesAttaquerUnite c1 carte unis 
+                        in case uni of
+                            Just elem->  case getUniteCoord unis elem of 
+                                            Just uni@(Unite cu pu tu idu pvu ordresu) -> let listeunis= M.delete idu unis in Environement joueurs carte (M.insert idu uni{pvu=pvu -1} listeunis) bats enns
+                                            Nothing -> acc
+                            Nothing -> let bat = getCoordonneesAttaquerBatiment c1 carte bats 
+                                        in case bat of
+                                            Just elem -> case getBatCoord bats elem of 
+                                                            Just bat@(Batiment cb pb tb idb pvb prixb utilisable) -> let listebats= M.delete idb bats in Environement joueurs carte unis (M.insert idb bat{pvb=pvb -1} listebats) enns
+                                                            Nothing -> error ("pb de coordonnée")
+                                            Nothing-> acc) env enns 
+
+mortUniteBat::Environement -> Environement
+mortUniteBat env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) = 
+     let newenv = foldl (\acc@(Environement _ _ unisAcc _ _) ( uId, uni@(Unite cu pu tu idu pvu ordresu))-> if (pvu ==0) then let listeunis= M.delete idu unisAcc in Environement joueurs carte listeunis bats enns else acc) env (M.toList unis) 
+     in foldl (\acc@(Environement _ _ _ batsAcc _) ( bId, bat@(Batiment cb pb tb idb pvb prixb utilisable))-> if (pvb ==0) then let listebats= M.delete idb batsAcc in Environement joueurs carte unis listebats enns else acc) newenv (M.toList bats)
+
 etape::Environement->Unite->Environement
 etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(Unite cu pu tu idu pvu ordresu) =
     case ordresu of
