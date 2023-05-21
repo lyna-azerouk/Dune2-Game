@@ -166,6 +166,10 @@ takeFirstPlayer :: [Joueur] -> Maybe Joueur
 takeFirstPlayer [] = Nothing
 takeFirstPlayer (joueur:_) = Just joueur
 
+takeFirstCoord :: [Coord] -> Maybe Coord
+takeFirstCoord [] = Nothing
+takeFirstCoord (coord:_) = Just coord
+
 chercheJoueur :: [Joueur] -> JoueurId -> Maybe Joueur
 chercheJoueur [] _ = Nothing
 chercheJoueur (joueur:listeJoueurs) idJoueur =
@@ -725,7 +729,34 @@ donnerOrdre env@(Environement joueurs carte unis bats enns) c ordre =
                                 False -> env
             u1:u2 -> error ("trop d'unité sur ces coordonnées")
 
+getCoordonneesVoisines :: Coord -> Carte -> M.Map UniteId Unite-> M.Map BatId Batiment->[Coord] -> [Coord]
+getCoordonneesVoisines c@(Coord x y) carte@(Carte xmax ymax contenu) unis bats ennemis=
+  let voisins = [(Coord (x - 1)  y), (Coord (x + 1)  y), (Coord x (y - 1)), (Coord x (y + 1))]
+  in filter (\c1@(Coord x1 y1)-> (estCaseLibre unis bats c1)&&(estPresentDansListe c1 ennemis)&&(x1 > -1 && x1 < (xmax +1) && y1 > -1 && y1 < (ymax +1))) voisins
 
+estCaseLibre :: M.Map UniteId Unite-> M.Map BatId Batiment -> Coord -> Bool
+estCaseLibre unis bats coord =
+  let listeunis = cherche_Case_Unite  coord unis 
+      listebats = cherche_Case_Batiment coord bats
+      in 
+    case listeunis of 
+        []-> case listebats of
+                []-> True 
+                _ -> False
+        _-> False
+
+estPresentDansListe :: Coord -> [Coord] -> Bool
+estPresentDansListe _ [] = True
+estPresentDansListe coord (x:xs)
+  | coord == x = False
+  | otherwise = estPresentDansListe coord xs
+
+modifCoordRaf::Environement -> [Coord] -> [Coord] 
+modifCoordRaf env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) craf =
+    let coordraf = case (takeFirstCoord craf) of
+                    Just fc -> fc
+                    Nothing -> error ("pas de coordonné") in 
+    getCoordonneesVoisines coordraf carte unis bats enns
 -- il y aura plus tard un pb car on déplace l'unité aux coord de la raffinerie mais vu qu'il y a un batiment l'unité ne va pas aller dessus
 etape::Environement->Unite->Environement
 etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(Unite cu pu tu idu pvu ordresu) =
@@ -750,9 +781,10 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(U
                                                                                                                         Environement joueurs carte (M.insert idu uni{ordres=Collecter} listeunis) bats enns
                                                                                                             _ -> let listeunis= M.delete idu unis in 
                                                                                                                 Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats enns
-        Collecter -> let (Collecteur n max) = tu in if(n==max) then let coordraf = coordRaffinerie bats pu in 
+        Collecter -> let (Collecteur n max) = tu in if(n==max) then let coordraf = coordRaffinerie bats pu 
+                                                                        newcoordraf = modifCoordRaf env coordraf in
                                                                     let listeunis= M.delete idu unis in 
-                                                                        case coordraf of 
+                                                                        case newcoordraf of 
                                                                             raf:[]-> Environement joueurs carte (M.insert idu uni{ordres=Deplacer raf Collecter} listeunis) bats enns
                                                                             _ -> env 
                                                     else 

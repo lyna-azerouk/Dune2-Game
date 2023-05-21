@@ -763,7 +763,27 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
     loop renderer currentTime newenvi
 
   when (M.insideGameState mouse boutonActionUnite) $ do
-     putStrLn "Action Unite!"
+    putStrLn "Donner les coordonnées de l'unité sur l'axe x"
+    str_cx <- getLine
+    putStrLn "Donner les coordonnées de l'unité sur l'axe y"
+    str_cy <- getLine 
+    let cx = case readMaybe str_cx :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée x invalide")
+        cy = case readMaybe str_cy :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée y invalide")
+        c = C.Coord cx cy 
+    let listeuni = E.cherche_Case_Unite c unites in 
+      case listeuni of
+        []-> error ("pas d'unité à ces coordonnées !")
+        u1:[]-> do
+                let newenvi = E.etape envi u1
+                print newenvi
+                putStrLn "Action Unite!"
+                let quit = any isQuitEvent events
+                loop renderer currentTime newenvi
+        _ ->error ("trop d'unité à ces coordonnées !")
 
   when (M.insideGameState mouse boutonDonnerOrdre) $ do
     putStrLn "nommer l'ordre: \n1 - Collecter\n2 - Deplacer\n3 - Patrouiller\n4 - Attaquer\n5 - PoserRaffinerie\n6 - Pause\n7 - Recherche\n"
