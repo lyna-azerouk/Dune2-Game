@@ -66,7 +66,7 @@ caseFromChar :: Char -> Terrain
 caseFromChar caractere = case caractere of
     'H' -> Herbe
     'E' -> Eau
-    'R' -> Ressource 0
+    'R' -> Ressource 3
     _   -> error ("Caractère inattendu : " ++[caractere])
 
 -- transforme une carte en liste de couples coordonnees / Terrain

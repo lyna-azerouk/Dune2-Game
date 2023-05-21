@@ -313,37 +313,41 @@ invariant_actionRaffinerie (Unite _ _ (Collecteur _ _) _ _ _) = True
 invariant_actionRaffinerie _ = False
 
 creerBatiment :: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
-creerBatiment j typeBat env@(Environement _ _ _ bats _) c idglobal prixbat pvbat =
-    let t = btinitialisation typeBat in 
-    case t of 
-        Nothing -> (False, env)
-        Just tnew ->
-            let bat = Batiment { coordb = c
-                               , propriob = jid j
-                               , typeb = tnew
-                               , idb = BatId idglobal
-                               , pvb = pvbat
-                               , prixb = prixbat
-                               , utilisable =True}
-                newBats = M.insert (BatId idglobal) bat bats
-                newEnv = env { batiments = newBats }
-            in (True, newEnv)
+creerBatiment j@(Joueur idj name credit) typeBat env@(Environement _ _ _ bats _) c idglobal prixbat pvbat =
+    if (credit - prixbat) >=0 then 
+        let t = btinitialisation typeBat in 
+        case t of 
+            Nothing -> (False, env)
+            Just tnew ->
+                let bat = Batiment { coordb = c
+                                , propriob = idj
+                                , typeb = tnew
+                                , idb = BatId idglobal
+                                , pvb = pvbat
+                                , prixb = prixbat
+                                , utilisable =True}
+                    newBats = M.insert (BatId idglobal) bat bats
+                    newEnv = env {joueurs = [(Joueur idj name (credit-prixbat))], batiments = newBats }
+                in (True, newEnv)
+    else (False,env)
 
 creerUnite:: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
-creerUnite j typeUni env@(Environement _ _ unis _ _) c idglobal prixuni pvuni =
-    let t = uniinitialisation typeUni in 
-    case t of 
-        Nothing -> (False, env)
-        Just tnew ->
-            let uni = Unite { coordu= c
-                                ,propriou=jid j,
-                                typeu= tnew,
-                                idu=UniteId idglobal,
-                                pvu=pvuni, -- pv si 0 => destruction 
-                                ordres= Pause}
-                newunis = M.insert (UniteId idglobal) uni unis
-                newEnv = env {unites = newunis}
-            in (True, newEnv)
+creerUnite j@(Joueur idj name credit) typeUni env@(Environement _ _ unis _ _) c idglobal prixuni pvuni =
+    if (credit - prixuni) >=0 then
+        let t = uniinitialisation typeUni in 
+        case t of 
+            Nothing -> (False, env)
+            Just tnew ->
+                let uni = Unite { coordu= c
+                                    ,propriou=idj,
+                                    typeu= tnew,
+                                    idu=UniteId idglobal,
+                                    pvu=pvuni, -- pv si 0 => destruction 
+                                    ordres= Pause}
+                    newunis = M.insert (UniteId idglobal) uni unis
+                    newEnv = env {joueurs = [(Joueur idj name (credit-prixuni))],unites = newunis}
+                in (True, newEnv)
+    else (False,env)
 
 
 prop_pre_creerBatiment1::Environement-> Coord->Bool
@@ -586,19 +590,22 @@ data Direction = Bas
                 deriving(Eq,Show)
 
 actionDeplacerUnite :: Environement -> Unite -> Direction -> Environement
-actionDeplacerUnite env@(Environement j carte unis bats _) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction =
+actionDeplacerUnite env@(Environement j carte unis bats enns) uni@(Unite coord@(Coord x y) _ _ _ _ _) direction =
   let coordTerrain = case direction of
-                       Bas -> Coord x (y-1)
-                       Haut -> Coord x (y+1)
+                       Bas -> Coord x (y+1)
+                       Haut -> Coord x (y-1)
                        Gauche -> Coord (x-1) y
                        Droit -> Coord (x+1) y
   in
   let listebats = cherche_Case_Batiment coordTerrain bats
       listeunis = cherche_Case_Unite coordTerrain unis
+      listeenns = trouver_ennemis enns coordTerrain
   in
   case listebats of
     [] -> case listeunis of
-            [] -> env {unites = deplace_Unite uni coordTerrain unis}
+            [] -> case listeenns of
+                []->env {unites = deplace_Unite uni coordTerrain unis}
+                _ -> env
             _ -> env
     _ -> env {unites = unis, batiments = bats}
   where
@@ -634,10 +641,6 @@ prop_post_actionDeplacerUnite env1@(Environement _ _ unis1 _ _) env2@(Environeme
     in let coordenv1 = foldl (\acc (id,unit@(Unite c _ _ _ _ _))-> if(id==idu) then c else acc) (Coord 0 0) (M.toList unis1) 
     in (coordenv1==coordTerrain) 
 
-
---invariant_actionDeplacerUnite::Unite -> Environement -> Bool
---invariant_actionDeplacerUnite uni@(Unite _ pu tu idu pvu oru) env@( _ _ unis _) = 
---    let (Coord x y) = foldl (\acc (id,unit@(Unite c _ _ _ _ _))-> if(id==idu) then c else acc) (Coord 0 0) (M.toList unis2) in
 
 myAbs :: Int -> Int
 myAbs val =
@@ -687,7 +690,9 @@ situer_A_une_Case (Coord x1 y1) (Coord x2 y2)=
         True
     else False
 
-{-trouver_ennemis::M.Map UniteId Unite-> Coord -> JoueurId-> [Unite]
+{- SI ON CHOISIT D'AVOIR PLUSIEURS JOUEURS => LES ENNEMIS SONT LES AUTRES JOUEURS
+--------------------------------------------------------------------------------
+trouver_ennemis::M.Map UniteId Unite-> Coord -> JoueurId-> [Unite]
 trouver_ennemis unis coord joueur = 
     map snd $ filter (\(_, bat) -> rafCoordJoueur bat joueur) (M.toList unis)
   where
@@ -816,11 +821,12 @@ mouvemenEnnemis env@(Environement joueurs carte@(Carte l h contenu) unis bats en
                                                             Just bat@(Batiment cb pb tb idb pvb prixb utilisable) -> let listebats= M.delete idb bats in Environement joueurs carte unis (M.insert idb bat{pvb=pvb -1} listebats) enns
                                                             Nothing -> error ("pb de coordonnée")
                                             Nothing-> acc) env enns 
-
+{- AUTRE VERSION DE FERMETURE UNITE ET BATIMENT 
+------------------------------------------------
 mortUniteBat::Environement -> Environement
 mortUniteBat env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) = 
      let newenv = foldl (\acc@(Environement _ _ unisAcc _ _) ( uId, uni@(Unite cu pu tu idu pvu ordresu))-> if (pvu ==0) then let listeunis= M.delete idu unisAcc in Environement joueurs carte listeunis bats enns else acc) env (M.toList unis) 
-     in foldl (\acc@(Environement _ _ _ batsAcc _) ( bId, bat@(Batiment cb pb tb idb pvb prixb utilisable))-> if (pvb ==0) then let listebats= M.delete idb batsAcc in Environement joueurs carte unis listebats enns else acc) newenv (M.toList bats)
+     in foldl (\acc@(Environement _ _ _ batsAcc _) ( bId, bat@(Batiment cb pb tb idb pvb prixb utilisable))-> if (pvb ==0) then let listebats= M.delete idb batsAcc in Environement joueurs carte unis listebats enns else acc) newenv (M.toList bats)-}
 
 supprimerElement :: Coord -> [Coord] -> [Coord]
 supprimerElement _ [] = [] 
@@ -893,3 +899,13 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(U
                                         Environement joueurs carte unis bats newenns
         
         Pause -> env
+
+
+miseAjourEnv::Environement -> Environement
+miseAjourEnv env@(Environement joueurs carte unis bats enns)=
+    let unites = cherche_fermeture_unite (M.elems unis)
+        newunis = foldl (\acc uid -> M.delete uid acc) unis unites
+        batiments = cherche_fermeture_bats (M.elems bats)
+        newbats = foldl (\acc bid -> M.delete bid acc) bats batiments in
+            env{unites = newunis,batiments=newbats}
+

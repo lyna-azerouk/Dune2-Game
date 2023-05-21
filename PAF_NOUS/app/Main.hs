@@ -445,15 +445,15 @@ main = do
 
   SDL.present renderer
   clock <- SDL.ticks
-  loop renderer clock gS -- Boucle principale
+  loop renderer clock gS 1 -- Boucle principale
    -- Affiche le rendu à l'écran
   SDL.destroyRenderer renderer -- Détruit le rendu
   SDL.destroyWindow window -- Ferme la fenêtre
   SDL.quit -- Quitte SDL
 
 
-loop :: Renderer -> Word32 -> Environement -> IO ()
-loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
+loop :: Renderer -> Word32 -> Environement -> Int ->IO ()
+loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idglobal = do
   let (C.Carte cx cy contenuCarte)=ecarte
   currentTime <- SDL.ticks
 
@@ -611,8 +611,22 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
   SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
 
   
+  let cr = case E.takeFirstPlayer joueurs of
+            Just j@(E.Joueur idj name credit ) -> credit 
+            Nothing -> 0
   
-  let ennemis = (C.Coord 6 12) : enn
+  let text5 = "Crédit = " ++ show cr
+  surface5 <- Font.blended font textColor (Text.pack text5) -- Rendu du texte sur une surface
+  texture5 <- SDL.createTextureFromSurface renderer surface5 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface5 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition5 = V2 50 500
+      textSize5 = V2 100 75-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture5 Nothing (Just (SDL.Rectangle (SDL.P textPosition5) textSize5))
+
   SDL.rendererDrawColor renderer SDL.$= textColor 
   texteCarte <- (readFile $ "assets/map.txt")
 
@@ -676,7 +690,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
     SDL.freeSurface imageSurface
     let dstRect = Just (Rectangle (P (V2 (fromIntegral (203 + x * 50)) (fromIntegral (4 + y * 50)))) (V2 (fromIntegral imageWidth) (fromIntegral imageHeight)))
     SDL.copy renderer imageTexture srcRect dstRect
-    ) ennemis
+    ) enn
 
   SDL.present renderer -- Affiche le rendu à l'écran
 
@@ -690,8 +704,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
     putStrLn "Récolté";
   
   when (M.insideGameState mouse boutonCreerBat) $ do
-    let idglobal = 9
-        j = case E.takeFirstPlayer joueurs of 
+    let j = case E.takeFirstPlayer joueurs of 
             Just jou -> jou
             Nothing -> error ("pas de joueurs")
     putStrLn "nommer le batiment : 1 - raffinerie, 2 - usine ou 3 - centrale"
@@ -719,15 +732,17 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
               Nothing -> error ("Coordonnée y invalide")
         c = C.Coord cx cy 
     let (val, newenvi) = E.creerBatiment j typeBat envi c idglobal prixbat pvbat
-    print newenvi
-    putStrLn "Batiment crée!"
+    --print newenvi
+    let text = case val of
+                True -> "Bâtiment crée!"
+                False -> "Bâtiment NON créee!"
+    putStrLn text
     let quit = any isQuitEvent events
-    loop renderer currentTime newenvi
+    loop renderer currentTime newenvi (idglobal+1)
 
 
   when (M.insideGameState mouse boutonCreerUni) $ do
-    let idglobal = 9
-        j = case E.takeFirstPlayer joueurs of 
+    let j = case E.takeFirstPlayer joueurs of 
             Just jou -> jou
             Nothing -> error ("pas de joueurs")
     putStrLn "nommer l'unité: 1 - collecteur, 2 - combattant"
@@ -752,10 +767,13 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
               Nothing -> error ("Coordonnée y invalide")
         c = C.Coord cx cy 
     let (val, newenvi) = E.creerUnite j typeBat envi c idglobal prixbat pvbat
-    print newenvi
-    putStrLn "Unité créee!"
+    let text = case val of
+                True -> "Unité créee!"
+                False -> "Unité NON créee!"
+    --print newenvi
+    putStrLn text
     let quit = any isQuitEvent events
-    loop renderer currentTime newenvi
+    loop renderer currentTime newenvi (idglobal +1)
 
   when (M.insideGameState mouse boutonActionUnite) $ do
     putStrLn "Donner les coordonnées de l'unité sur l'axe x"
@@ -775,11 +793,11 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
         u1:[]-> do
                 let newenvi = E.etape envi u1
                     finalenvi = E.mouvemenEnnemis newenvi
-                    finalenvi2 = E.mortUniteBat finalenvi
+                    finalenvi2 = E.miseAjourEnv finalenvi
                 print finalenvi2
                 putStrLn "Action Unite!"
                 let quit = any isQuitEvent events
-                loop renderer currentTime finalenvi2
+                loop renderer currentTime finalenvi2 idglobal
         _ ->error ("trop d'unité à ces coordonnées !")
 
   when (M.insideGameState mouse boutonDonnerOrdre) $ do
@@ -855,14 +873,14 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
         cuni = C.Coord cxuni cyuni
     newordre <- ordre
     let newenvi = E.donnerOrdre envi cuni newordre 
-    print newenvi
+    --print newenvi
     putStrLn "Ordre unité donné!"
     let quit = any isQuitEvent events
-    loop renderer currentTime newenvi
+    loop renderer currentTime newenvi idglobal
 
 
   let quit = any isQuitEvent events
-  unless quit $ loop renderer currentTime envi
+  unless quit $ loop renderer currentTime envi idglobal
 
 isQuitEvent :: SDL.Event -> Bool
 isQuitEvent (SDL.Event _ payload) =
