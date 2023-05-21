@@ -1,4 +1,4 @@
-module CarteSpec where
+module CarteQuickcheck where
 
 import Test.Hspec
 import Test.QuickCheck
@@ -23,7 +23,7 @@ prop_carteCoordInBounds_inv = forAll genCarte $ prop_allCoordsInBounds_inv
 
 
 carteAllCoordsInBoundsSpec = do
-  describe "Carte ---------> allCoordsInBounds_inv : " $ do
+  describe "Quickcheck ---------> allCoordsInBounds_inv : " $ do
     it "verifie que toutes les coordonnees de la carte correspondent a une case" $
       property prop_carteCoordInBounds_inv
 
@@ -33,7 +33,7 @@ carteAllCoordsInBoundsSpec = do
 --------------------------------------------
 --verifie que toutes les coordonnees entre la hauteur et la largeur donnent vers une case dans la carte
 carteAllCaseExistsSpec = do
-  describe "Carte ---------> allCoordInCarte_inv : " $ do
+  describe "Quickcheck ---------> allCoordInCarte_inv : " $ do
     it "verifie que toutes les coordonnees entre la hauteur et la largeur donnent vers une case dans la carte" $
       property prop_AllCoordInCarteCarte_inv
 
@@ -44,7 +44,7 @@ prop_AllCoordInCarteCarte_inv = forAll genCarte $ prop_allCoordInCarte_inv
 
 --verifie que les coordonnées sont valides
 carteCoordSpec = do
-  describe "Carte ---------> Coord" $ do
+  describe "Quickcheck ---------> Coord" $ do
     it "verifie que les coordonnées sont valides" $
       property prop_CoordCarte_inv
 

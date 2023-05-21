@@ -1,11 +1,12 @@
 import Test.Hspec
-import CarteSpec as CS
+import CarteQuickcheck as CS
 import EnvironementSpec as ES
-
+import EnvironnementQuickcheck as EQ
 main :: IO ()
 --main = putStrLn "Test suite not yet implemented"
 main = hspec $ do
-    -- carte
+    ES.engineSpec    
     CS.carteAllCoordsInBoundsSpec
     CS.carteCoordSpec
-    ES.engineSpec
+    EQ.entiteSpec
+

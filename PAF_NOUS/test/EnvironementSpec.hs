@@ -37,7 +37,6 @@ env1= Environement  [joueur1] ( createCarte "HHRRRHHHEEE")     (M.fromList[ ((Un
     
 
 
----verifie que chaque ebatiment corespond a un joueur
 enviTest = do
     describe "Tests environnement" $ do
         it "Environnement initiale" $ do
