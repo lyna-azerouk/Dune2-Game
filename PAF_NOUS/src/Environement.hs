@@ -189,6 +189,12 @@ cherche_Case_Unite coord unis =
   where
     caseUniteCoord (Unite c _ _ _ _ _) coordu = c == coordu
 
+cherche_Case_Ennemis :: Coord -> [Coord]-> [Coord]
+cherche_Case_Ennemis coord enns =
+  filter (\ c1 -> caseUniteCoord c1 coord) enns
+  where
+    caseUniteCoord c coordu = c == coordu
+
 -- prop_environnement_1 vérifie que chaque bâtiment et unité appartient à un joueur de l'environnement
 prop_environnement_1 :: Environement -> Bool
 prop_environnement_1 env@(Environement joueurs _ unites batiments _) =
@@ -681,12 +687,18 @@ situer_A_une_Case (Coord x1 y1) (Coord x2 y2)=
         True
     else False
 
-trouver_ennemis::M.Map UniteId Unite-> Coord -> JoueurId-> [Unite]
+{-trouver_ennemis::M.Map UniteId Unite-> Coord -> JoueurId-> [Unite]
 trouver_ennemis unis coord joueur = 
     map snd $ filter (\(_, bat) -> rafCoordJoueur bat joueur) (M.toList unis)
   where
-    rafCoordJoueur (Unite c p _ _ _ _) j= p /= j && (situer_A_une_Case coord c)
-    
+    rafCoordJoueur (Unite c p _ _ _ _) j= p /= j && (situer_A_une_Case coord c) -}
+
+trouver_ennemis::[Coord]-> Coord ->[Coord]
+trouver_ennemis ennemis coord = 
+    filter (\ ennemi -> rafCoordJoueur ennemi) ennemis
+  where
+    rafCoordJoueur c = situer_A_une_Case coord c
+
 bonOrdreType::TypeUnite -> TypeOrdres -> Bool
 bonOrdreType tuni tor = 
     case tuni of 
@@ -810,12 +822,18 @@ mortUniteBat env@(Environement joueurs carte@(Carte l h contenu) unis bats enns)
      let newenv = foldl (\acc@(Environement _ _ unisAcc _ _) ( uId, uni@(Unite cu pu tu idu pvu ordresu))-> if (pvu ==0) then let listeunis= M.delete idu unisAcc in Environement joueurs carte listeunis bats enns else acc) env (M.toList unis) 
      in foldl (\acc@(Environement _ _ _ batsAcc _) ( bId, bat@(Batiment cb pb tb idb pvb prixb utilisable))-> if (pvb ==0) then let listebats= M.delete idb batsAcc in Environement joueurs carte unis listebats enns else acc) newenv (M.toList bats)
 
+supprimerElement :: Coord -> [Coord] -> [Coord]
+supprimerElement _ [] = [] 
+supprimerElement cen (x:xs)
+  | x == cen = xs 
+  | otherwise = x : supprimerElement cen xs 
+
 etape::Environement->Unite->Environement
 etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(Unite cu pu tu idu pvu ordresu) =
     case ordresu of
         Deplacer c ordrebase ->   case tu of
-                                    Combattant -> case (trouver_ennemis unis cu pu) of
-                                                    (Unite cen _ _ _ _ _):reste ->let listeunis= M.delete idu unis in 
+                                    Combattant -> case (trouver_ennemis enns cu) of
+                                                    cen:reste ->let listeunis= M.delete idu unis in 
                                                         Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Deplacer c ordrebase)} listeunis) bats enns
                                                     [] ->let direction = calculDirection cu c in case direction of 
                                                                                                 Just d -> actionDeplacerUnite env uni d
@@ -861,24 +879,17 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(U
         
 
 
-        Patrouiller c1 c2 -> let ennemis=trouver_ennemis unis cu pu in case ennemis of
+        Patrouiller c1 c2 -> let ennemis=trouver_ennemis enns cu in case ennemis of
                                                                     [] -> let listeunis= M.delete idu unis in 
                                                                         Environement joueurs carte (M.insert idu uni{ordres=Deplacer c1 (Patrouiller c1 c2)} listeunis) bats enns
-                                                                    (Unite cen _ _ _ _ _):reste-> let listeunis= M.delete idu unis in 
+                                                                    cen:reste-> let listeunis= M.delete idu unis in 
                                                                         Environement joueurs carte (M.insert idu uni{ordres=Attaquer cen (Patrouiller c1 c2)} listeunis) bats enns
 
-        Attaquer c ordrebase -> let ennemis = cherche_Case_Unite c unis in 
+        Attaquer c ordrebase -> let ennemis = cherche_Case_Ennemis c enns in 
                                 case ennemis of 
                                     []-> let listeunis= M.delete idu unis in 
                                         Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats enns
-                                    (Unite cen pen _ iden pven _):reste -> if pen /= pu then 
-                                        if((pven-6)<=0) then let listeunis= M.delete iden unis in 
-                                                            let newunis = (M.insert iden uni{pvu=0} listeunis) in
-                                                            let newunisbis = M.delete idu newunis in
-                                                            Environement joueurs carte (M.insert idu uni{ordres=Pause} listeunis) bats enns
-                                        else 
-                                            let listeunis= M.delete iden unis in 
-                                            Environement joueurs carte (M.insert iden uni{pvu=pven-6} listeunis) bats enns
-                                        else env
+                                    cen:reste -> let newenns = supprimerElement cen enns in 
+                                        Environement joueurs carte unis bats newenns
         
         Pause -> env

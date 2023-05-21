@@ -824,7 +824,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
                                               Just val -> val
                                               Nothing -> error ("Coordonnée y invalide")
                                         c2 = C.Coord cx2 cy2 in return (E.Patrouiller c c2)
-                                3 -> do 
+                                4 -> do 
                                     putStrLn "Où attaquer sur l'axe x"
                                     str_cx <- getLine
                                     putStrLn "Où attaquer sur l'axe y"
@@ -836,9 +836,9 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
                                               Just val -> val
                                               Nothing -> error ("Coordonnée y invalide")
                                         c = C.Coord cx cy in return (E.Attaquer c E.Pause)
-                                4 -> return E.PoserRaffinerie
-                                5 -> return E.Pause
-                                6 -> return E.Recherche
+                                5 -> return E.PoserRaffinerie
+                                6 -> return E.Pause
+                                7 -> return E.Recherche
                                 _-> error "Num typeordre d'unité' invalide"
                     Nothing -> error "Type d'ordre invalide"
     
