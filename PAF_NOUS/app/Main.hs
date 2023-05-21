@@ -764,8 +764,84 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) = do
 
   when (M.insideGameState mouse boutonActionUnite) $ do
      putStrLn "Action Unite!"
+
   when (M.insideGameState mouse boutonDonnerOrdre) $ do
-     putStrLn "Ordre unité donné!"
+    putStrLn "nommer l'ordre: \n1 - Collecter\n2 - Deplacer\n3 - Patrouiller\n4 - Attaquer\n5 - PoserRaffinerie\n6 - Pause\n7 - Recherche\n"
+    type_num<- getLine
+    let ordre = case readMaybe type_num :: Maybe Int of
+                    Just val -> case val of 
+                                1 -> return E.Collecter 
+                                2 -> do 
+                                    putStrLn "Où aller sur l'axe x"
+                                    str_cx <- getLine
+                                    putStrLn "Où aller sur l'axe y"
+                                    str_cy <- getLine 
+                                    let cx = case readMaybe str_cx :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée x invalide")
+                                        cy = case readMaybe str_cy :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée y invalide")
+                                        c = C.Coord cx cy in return (E.Deplacer c E.Pause)
+                                3 -> do 
+                                    putStrLn "patrouille premier coordonnée sur l'axe x"
+                                    str_cx <- getLine
+                                    putStrLn "patrouille premier coordonnée sur l'axe y"
+                                    str_cy <- getLine 
+                                    let cx = case readMaybe str_cx :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée x invalide")
+                                        cy = case readMaybe str_cy :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée y invalide")
+                                        c = C.Coord cx cy 
+                                        
+                                    putStrLn "patrouille deuxième coordonnée sur l'axe x"
+                                    str_cx2 <- getLine
+                                    putStrLn "patrouille deuxième coordonnée sur l'axe y"
+                                    str_cy2 <- getLine 
+                                    let cx2 = case readMaybe str_cx2 :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée x invalide")
+                                        cy2 = case readMaybe str_cy2 :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée y invalide")
+                                        c2 = C.Coord cx2 cy2 in return (E.Patrouiller c c2)
+                                3 -> do 
+                                    putStrLn "Où attaquer sur l'axe x"
+                                    str_cx <- getLine
+                                    putStrLn "Où attaquer sur l'axe y"
+                                    str_cy <- getLine 
+                                    let cx = case readMaybe str_cx :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée x invalide")
+                                        cy = case readMaybe str_cy :: Maybe Int of
+                                              Just val -> val
+                                              Nothing -> error ("Coordonnée y invalide")
+                                        c = C.Coord cx cy in return (E.Attaquer c E.Pause)
+                                4 -> return E.PoserRaffinerie
+                                5 -> return E.Pause
+                                6 -> return E.Recherche
+                                _-> error "Num typeordre d'unité' invalide"
+                    Nothing -> error "Type d'ordre invalide"
+    
+    putStrLn "Donner les coordonnées de l'unité sur l'axe x"
+    str_cxuni <- getLine
+    putStrLn "Donner les coordonnées de l'unité sur l'axe y"
+    str_cyuni <- getLine 
+    let cxuni = case readMaybe str_cxuni :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée x invalide")
+        cyuni = case readMaybe str_cyuni :: Maybe Int of
+              Just val -> val
+              Nothing -> error ("Coordonnée y invalide")
+        cuni = C.Coord cxuni cyuni
+    newordre <- ordre
+    let newenvi = E.donnerOrdre envi cuni newordre 
+    print newenvi
+    putStrLn "Ordre unité donné!"
+    let quit = any isQuitEvent events
+    loop renderer currentTime newenvi
 
 
   let quit = any isQuitEvent events

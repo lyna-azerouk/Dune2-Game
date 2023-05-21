@@ -683,6 +683,49 @@ trouver_ennemis unis coord joueur =
   where
     rafCoordJoueur (Unite c p _ _ _ _) j= p /= j && (situer_A_une_Case coord c)
 
+
+bonOrdreType::TypeUnite -> TypeOrdres -> Bool
+bonOrdreType tuni tor = 
+    case tuni of 
+        Combattant -> case tor of 
+                        Collecter -> False
+                        Deplacer ct t -> True
+                        Patrouiller c1 c2 -> True
+                        Attaquer ca t -> True
+                        PoserRaffinerie -> False
+                        Pause -> True
+                        Recherche -> False
+        Collecteur _ _ -> case tor of 
+                        Collecter -> True
+                        Deplacer ct t -> True
+                        Patrouiller c1 c2 -> False
+                        Attaquer ca t -> False
+                        PoserRaffinerie -> True
+                        Pause -> True
+                        Recherche -> True
+
+
+donnerOrdre::Environement -> Coord-> TypeOrdres -> Environement
+donnerOrdre env@(Environement joueurs carte unis bats enns) c ordre = 
+    let uni = cherche_Case_Unite c unis in 
+        case uni of
+            [] -> error ("pas d'unité à ces coordonnées")
+            u1:[]-> let (Unite cu pu tu idu pvu ordresu) = u1 
+                        newordre = case ordre of 
+                                Collecter -> Collecter
+                                Deplacer ct t -> Deplacer ct ordresu
+                                Patrouiller c1 c2 -> Patrouiller c1 c2
+                                Attaquer ca t -> Attaquer ca ordresu
+                                PoserRaffinerie -> PoserRaffinerie
+                                Pause -> Pause
+                                Recherche -> Recherche
+                        estPossible = bonOrdreType tu newordre in 
+                            case estPossible of
+                                True -> let newliste = M.delete idu unis in Environement joueurs carte (M.insert idu u1{ordres=newordre} newliste) bats enns
+                                False -> env
+            u1:u2 -> error ("trop d'unité sur ces coordonnées")
+
+
 -- il y aura plus tard un pb car on déplace l'unité aux coord de la raffinerie mais vu qu'il y a un batiment l'unité ne va pas aller dessus
 etape::Environement->Unite->Environement
 etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(Unite cu pu tu idu pvu ordresu) =
