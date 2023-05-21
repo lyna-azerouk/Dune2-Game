@@ -13,24 +13,28 @@ newtype JoueurId = JoueurId Int deriving (Eq, Show)
 data Joueur = Joueur{
     idj::JoueurId,
     name::String,
-    credit::Int
+    credit::Int,
+    energie::Int
 } deriving (Eq, Show)
 
 creerJoueur::Int ->[Joueur]
 creerJoueur nbr = foldl (\acc n -> (Joueur {
                         idj= JoueurId n,
                         name= "joueur"++ (show n),
-                        credit=25
+                        credit=25, energie=5
                     }):acc) [] [1..nbr]
    
 jid::Joueur -> JoueurId
-jid joueur@(Joueur id _ _) = id
+jid joueur@(Joueur id _ _ _) = id
 
 jname::Joueur -> String
-jname joueur@(Joueur _ name _) = name
+jname joueur@(Joueur _ name _ _) = name
 
 jcredit::Joueur -> Int
-jcredit joueur@(Joueur _ _ credit) = credit
+jcredit joueur@(Joueur _ _ credit _) = credit
+
+jenergie::Joueur -> Int
+jenergie joueur@(Joueur _ _ _ energie) = energie
 
 newtype BatId = BatId Int deriving (Eq, Show)
 
@@ -41,8 +45,8 @@ instance Ord BatId where
   (BatId id1) >= (BatId id2) = id1 >= id2
 
 data TypeBatiment = QG Int -- Int = energie_prod
-    | Raffinerie Int -- Int = energie_conso
-    | Usine Int TypeUnite Int String-- Int = energie_conso , Unite = unite produite et Int = temps de production
+    | Raffinerie Int Int -- Int = energie_conso
+    | Usine Int String Int String-- Int = energie_conso , Unite = unite produite et Int = temps de production, String = Etat
     | Centrale Int -- Int = energie_prod
     deriving (Show)
 
@@ -74,15 +78,15 @@ bid batiment@(Batiment _ _ _ id _ _ _)= id
 btype:: Batiment -> String
 btype batiment@(Batiment _ _ typeb _ _ _ _)= case typeb of 
     QG r -> "qg"
-    Raffinerie r ->"raffinerie"
+    Raffinerie r _->"raffinerie"
     Usine r1 u r2 etat ->"usine"
     Centrale r -> "centrale"
     _-> "error pas de type bâtiment"
 
 btinitialisation:: String -> Maybe TypeBatiment
 btinitialisation typeb= case typeb of
-    "raffinerie" -> Just (Raffinerie 10)
-    "usine" -> Just (Usine 10 Combattant 0 "vide")
+    "raffinerie" -> Just (Raffinerie 10 5)
+    "usine" -> Just (Usine 10 "combattant" 0 "vide")
     "centrale" -> Just (Centrale 15)
     _-> Nothing
 
@@ -94,10 +98,11 @@ uniinitialisation typeb= case typeb of
 
 getPrixBat:: String -> Maybe Int
 getPrixBat typeb= case typeb of
-    "raffinerie" -> Just 10
+    "raffinerie" -> Just 10 
     "usine" -> Just 15
     "centrale" -> Just 15
     _-> Nothing
+
 newtype UniteId = UniteId Int  deriving (Show)
 instance Eq UniteId where
     (UniteId a) == (UniteId b) = a == b
@@ -162,6 +167,7 @@ data Environement= Environement{
     batiments:: M.Map BatId Batiment,
     ennemis::[Coord]
 } deriving (Show)
+
 takeFirstPlayer :: [Joueur] -> Maybe Joueur
 takeFirstPlayer [] = Nothing
 takeFirstPlayer (joueur:_) = Just joueur
@@ -169,6 +175,10 @@ takeFirstPlayer (joueur:_) = Just joueur
 takeFirstCoord :: [Coord] -> Maybe Coord
 takeFirstCoord [] = Nothing
 takeFirstCoord (coord:_) = Just coord
+
+takeFirstBat:: [Batiment] -> Maybe Batiment
+takeFirstBat [] = Nothing
+takeFirstBat (bat:_) = Just bat
 
 chercheJoueur :: [Joueur] -> JoueurId -> Maybe Joueur
 chercheJoueur [] _ = Nothing
@@ -293,10 +303,10 @@ smartConst_env carte listejoueurs = do
 ---------------------
 
 
-actionRaffinerie :: Unite -> Batiment -> (Unite, Int)
-actionRaffinerie unite@(Unite _ _ (Collecteur n max) _ _ _) bat =
-  let nbrRessources = ressouceCollecteur unite
-  in (unite { typeu = Collecteur 0 max}, nbrRessources)
+actionRaffinerie :: Unite -> Batiment -> (Unite, Batiment)
+actionRaffinerie unite@(Unite _ _ (Collecteur n max) _ _ _) bat@(Batiment _ _ t@(Raffinerie ener ressources) _ _ _ True) =
+    let nbrRessources = ressouceCollecteur unite in (unite { typeu = Collecteur 0 max}, bat{typeb= Raffinerie ener (ressources + nbrRessources)})
+actionRaffinerie unite@(Unite _ _ (Collecteur n max) _ _ _) bat@(Batiment _ _ _ _ _ _ _) = (unite, bat)
 
 --prop_pre_actionRaffinerie  : vérifier que bat est une raffinerie appartenant à joueur
 prop_pre_actionRaffinerie :: Unite -> Bool
@@ -313,7 +323,7 @@ invariant_actionRaffinerie (Unite _ _ (Collecteur _ _) _ _ _) = True
 invariant_actionRaffinerie _ = False
 
 creerBatiment :: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
-creerBatiment j@(Joueur idj name credit) typeBat env@(Environement _ _ _ bats _) c idglobal prixbat pvbat =
+creerBatiment j@(Joueur idj name credit ener) typeBat env@(Environement _ _ _ bats _) c idglobal prixbat pvbat =
     if (credit - prixbat) >=0 then 
         let t = btinitialisation typeBat in 
         case t of 
@@ -327,12 +337,12 @@ creerBatiment j@(Joueur idj name credit) typeBat env@(Environement _ _ _ bats _)
                                 , prixb = prixbat
                                 , utilisable =True}
                     newBats = M.insert (BatId idglobal) bat bats
-                    newEnv = env {joueurs = [(Joueur idj name (credit-prixbat))], batiments = newBats }
+                    newEnv = env {joueurs = [(Joueur idj name (credit-prixbat) ener)], batiments = newBats }
                 in (True, newEnv)
     else (False,env)
 
 creerUnite:: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
-creerUnite j@(Joueur idj name credit) typeUni env@(Environement _ _ unis _ _) c idglobal prixuni pvuni =
+creerUnite j@(Joueur idj name credit ener) typeUni env@(Environement _ _ unis _ _) c idglobal prixuni pvuni =
     if (credit - prixuni) >=0 then
         let t = uniinitialisation typeUni in 
         case t of 
@@ -345,7 +355,7 @@ creerUnite j@(Joueur idj name credit) typeUni env@(Environement _ _ unis _ _) c 
                                     pvu=pvuni, -- pv si 0 => destruction 
                                     ordres= Pause}
                     newunis = M.insert (UniteId idglobal) uni unis
-                    newEnv = env {joueurs = [(Joueur idj name (credit-prixuni))],unites = newunis}
+                    newEnv = env {joueurs = [(Joueur idj name (credit-prixuni) ener)],unites = newunis}
                 in (True, newEnv)
     else (False,env)
 
@@ -416,7 +426,7 @@ actionConsommationEnergie env@(Environement _ _ _ bats _) joueur =
     foldl (\res bat -> (caseBatJoueur bat joueur)+res) 0 listebats
   where
     caseBatJoueur(Batiment _ _ t _ _ _ _) joueur = case t of 
-                                            Raffinerie n -> n
+                                            Raffinerie n _ -> n
                                             Usine n u temp etat-> n
                                             _-> 0
 
@@ -484,9 +494,9 @@ cherche_qg_joueur bats =
 
 verificationDestruction::Environement->Environement
 verificationDestruction env@(Environement joueurs carte unis bats enns) =
-    foldl (\acc joueur@(Joueur idj _ _)-> let listebats = cherche_Joueur_Batiment joueur bats in
+    foldl (\acc joueur@(Joueur idj _ _ _)-> let listebats = cherche_Joueur_Batiment joueur bats in
                 case (cherche_qg_joueur listebats) of
-                True -> let newjoueurs =  filter (\j@(Joueur id name credit)->
+                True -> let newjoueurs =  filter (\j@(Joueur id name credit _)->
                                         id /= idj) joueurs in
                         
                         let listeunite=cherche_Joueur_Unite joueur unis in 
@@ -501,8 +511,37 @@ verificationDestruction env@(Environement joueurs carte unis bats enns) =
 --prop_post_verificationDestruction
 --invariant_verificationDestruction -> pas d'idée
 
-actionUsine::Batiment->Joueur->TypeUnite->Batiment
-actionUsine bat@(Batiment _ _ (Usine n u temp _) _ _ _ _) joueur unite = bat{typeb=Usine n unite temp "en cours"}
+actionUsine::Environement ->Coord -> Int->String -> Environement
+actionUsine env@(Environement _ _ _ bats _) c temp unite = 
+    let newbats = foldl (\acc (bid,bat@(Batiment cb _ t _ _ _ uti))-> if (c==cb && uti==True) then case t of 
+                                                                                    Usine n unite temp chaine -> let listebats =M.delete bid acc in M.insert bid bat{typeb=Usine n unite temp "en cours"} acc
+                                                                                    _ -> acc
+                                                                    else acc) bats (M.toList bats)
+    in env{batiments=newbats}
+
+actionFinUsine :: Environement -> Joueur -> Coord -> Coord -> Int ->Int-> (Bool,Environement)
+actionFinUsine env@(Environement _ _ _ bats _) joueur c newcoord temp idg =
+    let var = takeFirstBat (map snd $ filter (\(_, bat) -> usineCoordJoueur bat) (M.toList bats))
+                                        
+                                        where usineCoordJoueur (Batiment cu p t _ _ _ _) = cu == c && (case t of
+                                                                Usine _ _ _ _ -> True
+        
+                                                                _ -> False)
+        Batiment co po tp ido _ _ _ = case var of 
+                                        Just res -> res
+                                        Nothing -> error ("pas d'usine aux coordonées")
+        Usine n unite temp chaine = tp
+   in
+   if chaine == "terminé"
+       then let newbats = foldl (\acc (bid, bat) -> if ido == bid
+                                                   then let listebats = M.delete bid bats
+                                                            in M.insert bid (bat {typeb = Usine n unite 0 "vide"}) acc
+                                                   else acc) bats (M.toList bats)
+                (true,newenv) = creerBatiment joueur chaine env newcoord idg 0 10
+            in (true,newenv{batiments = newbats})
+       else (False,env)
+
+
 
 prop_pre_actionUsine1::Batiment->Joueur->Bool --verifier que c est une usine et qu elle appartient à joueur
 prop_pre_actionUsine1 bat@(Batiment _ pb typ _ _ _ _) joueur = case typ of
@@ -521,7 +560,7 @@ prop_post_actionUsine bat@(Batiment _ _ (Usine n u temp "vide") _ _ _ _)=False
 invariant_actionUsine ::Batiment->Batiment-> Bool --n et temps identique
 invariant_actionUsine bat1@(Batiment _ _ (Usine n1 _ temp1 _) _ _ _ _) bat2@(Batiment _ _ (Usine n2 _ temp2 _) _ _ _ _) = if(n1==n2 && temp1==temp2) then True else False
 
-recupUsine :: Batiment -> Joueur -> TypeUnite
+recupUsine :: Batiment -> Joueur -> String
 recupUsine bat@(Batiment _ _ (Usine n u temp _) _ _ _ _) joueur =
     let newBat = bat { typeb = Usine n u temp "vide" }
     in u
@@ -664,7 +703,7 @@ coordRaffinerie :: M.Map BatId Batiment -> JoueurId -> [Coord]
 coordRaffinerie bats joueur = 
     map coord $ filter (\bat -> rafCoordJoueur bat joueur) (M.elems bats)
   where
-    rafCoordJoueur (Batiment c p (Raffinerie _) _ _ _ _) j = p == j
+    rafCoordJoueur (Batiment c p (Raffinerie _ _) _ _ _ _) j = p == j
     coord (Batiment c _ _ _ _ _ _) = c
 
 
@@ -672,16 +711,26 @@ trouver_raffinerie::M.Map BatId Batiment->JoueurId->[Batiment]
 trouver_raffinerie bats joueur =
      map snd $ filter (\(_, bat) -> rafCoordJoueur bat joueur) (M.toList bats)
   where
-    rafCoordJoueur (Batiment c p _ _ _ _ _) j= p == j
+    rafCoordJoueur (Batiment c p t _ _ _ _) j= p == j && (case t of
+                                                            Raffinerie r1 r2-> True
+                                                            _->False)
     
 
-modifier_credit :: JoueurId -> Environement -> Int -> Environement
-modifier_credit idj env@(Environement joueurs carte unis bats enns) newcred =
-    let updated_joueurs = map (\j@(Joueur id _ cred) ->
+modifier_credit :: JoueurId -> Environement -> Environement
+modifier_credit idj env@(Environement joueurs carte unis bats enns) =
+    let raf= trouver_raffinerie bats idj
+        newcred = foldl (\acc bat@(Batiment c p (Raffinerie _ ressource) _ _ _ _)-> acc+ressource) 0 raf
+    in 
+    let updated_joueurs = map (\j@(Joueur id name cred ener) ->
                                 if (id == idj)
-                                    then Joueur id "" (cred + newcred)
+                                    then Joueur id name (cred + newcred) ener
                                     else j) joueurs
-    in Environement updated_joueurs carte unis bats enns
+        updated_bats = foldl (\acc (idb,bat@(Batiment _ _ t id _ _ _))->
+                                let batiment = case t of 
+                                                Raffinerie n r -> bat{typeb=Raffinerie n 0}
+                                                _->  bat
+                                in M.insert id batiment acc) M.empty (M.toList bats)         
+    in Environement updated_joueurs carte unis updated_bats enns
 
 
 situer_A_une_Case::Coord->Coord->Bool
@@ -866,6 +915,13 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(U
                                                     else 
                                                         let carre = getCase cu carte in 
                                                             case carre of
+                                                                Just (Ressource 0)-> let listeunis= M.delete idu unis in 
+                                                                                        let (Carte l h contenu)=carte
+                                                                                            (Coord x y )=cu in
+                                                                                        if(x>0 && x<l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord (x+1) y) Recherche} listeunis) bats enns
+                                                                                        else if(y>0 && y<l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord x (y+1)) Recherche} listeunis) bats enns
+                                                                                            else if(x==l) then Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord (x-1) y) Recherche} listeunis) bats enns
+                                                                                                else Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord x (y-1)) Recherche} listeunis) bats enns
                                                                 Just (Ressource r) -> let valres = let res=n+r in if res>max then max else res
                                                                                           newcarte= M.delete cu contenu
                                                                                           listeunis= M.delete idu unis             
@@ -880,11 +936,15 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(U
                                                                             else Environement joueurs carte (M.insert idu uni{ordres=Deplacer (Coord x (y-1)) Recherche} listeunis) bats enns
 
 
-        PoserRaffinerie  -> let raf = trouver_raffinerie bats pu in let (Collecteur val max) = tu in 
-                            modifier_credit pu env val
+        PoserRaffinerie -> let raffineries = trouver_raffinerie bats pu
+                            in let (newuni,newbat) = case takeFirstBat (filter (\(Batiment cb _ _ _ _ _ _) -> cb == cu) raffineries) of
+                                            Nothing -> error "Pas de raffinerie pour ce joueur !"
+                                            Just r -> actionRaffinerie uni r 
+                            in let listeunis= M.delete idu unis
+                                   listebats = M.delete (bid newbat) bats
+                            in Environement joueurs carte (M.insert idu newuni{ordres=Pause} listeunis) (M.insert (bid newbat) newbat listebats) enns
+
         
-
-
         Patrouiller c1 c2 -> let ennemis=trouver_ennemis enns cu in case ennemis of
                                                                     [] -> let listeunis= M.delete idu unis in 
                                                                         Environement joueurs carte (M.insert idu uni{ordres=Deplacer c1 (Patrouiller c1 c2)} listeunis) bats enns
@@ -901,11 +961,19 @@ etape env@(Environement joueurs carte@(Carte l h contenu) unis bats enns) uni@(U
         Pause -> env
 
 
-miseAjourEnv::Environement -> Environement
-miseAjourEnv env@(Environement joueurs carte unis bats enns)=
+miseAjourEnv :: Environement -> Int -> Environement
+miseAjourEnv env@(Environement joueurs carte unis bats enns) temp =
     let unites = cherche_fermeture_unite (M.elems unis)
         newunis = foldl (\acc uid -> M.delete uid acc) unis unites
         batiments = cherche_fermeture_bats (M.elems bats)
-        newbats = foldl (\acc bid -> M.delete bid acc) bats batiments in
-            env{unites = newunis,batiments=newbats}
+        newbats = foldl (\acc bid -> M.delete bid acc) bats batiments
+        newfinalbats = foldl (\acc (bid, bat@(Batiment _ _ t _ _ t1 _)) -> case t of
+                Usine ener tu t1' chaine ->
+                    if (temp - t1') > 600
+                        then let newbats = M.delete bid acc in
+                                M.insert bid (bat{typeb = Usine ener tu 0 "terminé"}) acc
+                        else acc
+                _ -> acc
+                ) newbats (M.toList newbats)
+    in env{unites = newunis, batiments = newfinalbats}
 
