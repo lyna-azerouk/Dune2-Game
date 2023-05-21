@@ -523,6 +523,12 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
   let dstRect = Just (Rectangle (P (V2 35 450)) (V2 115 50))
   SDL.copy renderer imageTexture srcRect dstRect
 
+   -- Dessine le rectangle
+  imageSurface <- IMG.load "assets/button.png"
+  imageTexture <- SDL.createTextureFromSurface renderer imageSurface
+  SDL.freeSurface imageSurface
+  let dstRect = Just (Rectangle (P (V2 35 515)) (V2 115 50))
+  SDL.copy renderer imageTexture srcRect dstRect
   let text = "Actions"
 
     -- Rendu du texte
@@ -566,7 +572,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
   -- Affichage du texte
   SDL.copy renderer texture3 Nothing (Just (SDL.Rectangle (SDL.P textPosition3) textSize3))
   
-  let text4 = "Créer Unite"
+  let text4 = "Recup Usine Unite"
 
     -- Rendu du texte
   surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
@@ -607,7 +613,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
   -- Affichage du texte
   SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
 
-  let text4 = "Recup Unite Usine"
+  let text4 = "Créer Unite"
 
     -- Rendu du texte
   surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
@@ -621,6 +627,20 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
   -- Affichage du texte
   SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
   
+  let text4 = "Production Energie"
+
+    -- Rendu du texte
+  surface4 <- Font.blended font textColor text4 -- Rendu du texte sur une surface
+  texture4 <- SDL.createTextureFromSurface renderer surface4 -- Création d'une texture à partir de la surface
+  SDL.freeSurface surface4 -- Libération de la surface
+
+  -- Position du texte
+  let textPosition4 = V2 50 520
+      textSize4 = V2 100 25-- Taille du rectangle
+
+  -- Affichage du texte
+  SDL.copy renderer texture4 Nothing (Just (SDL.Rectangle (SDL.P textPosition4) textSize4))
+
   let cr = case E.takeFirstPlayer joueurs of
             Just j@(E.Joueur idj name credit _) -> credit 
             Nothing -> 0
@@ -631,8 +651,8 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
   SDL.freeSurface surface5 -- Libération de la surface
 
   -- Position du texte
-  let textPosition5 = V2 50 500
-      textSize5 = V2 100 65-- Taille du rectangle
+  let textPosition5 = V2 50 575
+      textSize5 = V2 100 35-- Taille du rectangle
 
   -- Affichage du texte
   SDL.copy renderer texture5 Nothing (Just (SDL.Rectangle (SDL.P textPosition5) textSize5))
@@ -647,8 +667,8 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
   SDL.freeSurface surface6 -- Libération de la surface
 
   -- Position du texte
-  let textPosition6 = V2 50 570
-      textSize6 = V2 100 65-- Taille du rectangle
+  let textPosition6 = V2 50 615
+      textSize6 = V2 100 35-- Taille du rectangle
 
   -- Affichage du texte
   SDL.copy renderer texture6 Nothing (Just (SDL.Rectangle (SDL.P textPosition6) textSize6))
@@ -726,7 +746,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
   let boutonActionUnite= M.GameState 35 300 0
   let boutonDonnerOrdre= M.GameState 35 375 0
   let boutonUsine= M.GameState 35 450 0
-
+  let boutonCentrale= M.GameState 35 515 0
   when (M.insideGameState mouse boutonRecolter) $ do
     let idj = case E.takeFirstPlayer joueurs of
             Just j@(E.Joueur idj name credit _) -> idj
@@ -808,7 +828,7 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
     let text = case val of
                 True -> "Unité créee!"
                 False -> "Unité NON créee!"
-    --print newenvi
+    print newenvi
     let finalenvi = E.mouvemenEnnemis newenvi
         finalenvi2 = E.miseAjourEnv finalenvi temp
     putStrLn text
@@ -949,6 +969,8 @@ loop renderer prevTime envi@(E.Environement joueurs ecarte unites bats enn) idgl
     let quit = any isQuitEvent events
     loop renderer currentTime finalenvi2 idglobal (temp+1)
 
+  when (M.insideGameState mouse boutonCentrale) $ do
+    putStrLn "Energie Récupérée !"
 
   let finalenvi = E.mouvemenEnnemis envi
       finalenvi2 = E.miseAjourEnv finalenvi temp

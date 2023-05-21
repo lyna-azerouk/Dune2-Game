@@ -95,7 +95,7 @@ uniinitialisation typeb= case typeb of
     "combattant" -> Just Combattant 
     "collecteur" -> Just (Collecteur 0 4)
     _-> Nothing
-
+    
 getPrixBat:: String -> Maybe Int
 getPrixBat typeb= case typeb of
     "raffinerie" -> Just 10 
@@ -341,10 +341,16 @@ creerBatiment j@(Joueur idj name credit ener) typeBat env@(Environement _ _ _ ba
                 in (True, newEnv)
     else (False,env)
 
+afficher :: String -> IO Bool
+afficher chaine = do
+    putStrLn chaine
+    return True
+
+
 creerUnite:: Joueur -> String -> Environement -> Coord -> Int -> Int -> Int -> (Bool, Environement)
 creerUnite j@(Joueur idj name credit ener) typeUni env@(Environement _ _ unis _ _) c idglobal prixuni pvuni =
-    if (credit - prixuni) >=0 then
-        let t = uniinitialisation typeUni in 
+    let essa = afficher typeUni in 
+    let t = uniinitialisation typeUni in 
         case t of 
             Nothing -> (False, env)
             Just tnew ->
@@ -356,8 +362,8 @@ creerUnite j@(Joueur idj name credit ener) typeUni env@(Environement _ _ unis _ 
                                     ordres= Pause}
                     newunis = M.insert (UniteId idglobal) uni unis
                     newEnv = env {joueurs = [(Joueur idj name (credit-prixuni) ener)],unites = newunis}
-                in (True, newEnv)
-    else (False,env)
+                    in (True, newEnv)
+
 
 
 prop_pre_creerBatiment1::Environement-> Coord->Bool
@@ -513,8 +519,8 @@ verificationDestruction env@(Environement joueurs carte unis bats enns) =
 
 actionUsine::Environement ->Coord -> Int->String -> Environement
 actionUsine env@(Environement _ _ _ bats _) c temp unite = 
-    let newbats = foldl (\acc (bid,bat@(Batiment cb _ t _ _ _ uti))-> if (c==cb && uti==True) then case t of 
-                                                                                    Usine n unite temp chaine -> let listebats =M.delete bid acc in M.insert bid bat{typeb=Usine n unite temp "en cours"} acc
+    let newbats = foldl (\acc (bid,bat@(Batiment cb _ t _ _ _ uti))-> if (c==cb) then case t of 
+                                                                                    Usine n un tem chaine -> let listebats =M.delete bid acc in M.insert bid bat{typeb=Usine n unite temp "en cours"} acc
                                                                                     _ -> acc
                                                                     else acc) bats (M.toList bats)
     in env{batiments=newbats}
@@ -537,9 +543,9 @@ actionFinUsine env@(Environement _ _ _ bats _) joueur c newcoord temp idg =
                                                    then let listebats = M.delete bid bats
                                                             in M.insert bid (bat {typeb = Usine n unite 0 "vide"}) acc
                                                    else acc) bats (M.toList bats)
-                (true,newenv) = creerBatiment joueur chaine env newcoord idg 0 10
+                (true,newenv) = creerUnite joueur unite env newcoord idg 0 10
             in (true,newenv{batiments = newbats})
-       else (False,env)
+    else (False,env)
 
 
 
